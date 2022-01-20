@@ -157,10 +157,6 @@ function searchForward(text: string,  offset: number, init: RegExp, stop: RegExp
     };
 };
 
-/** Strip HOL comments from the text. */
-function stripComments(text: string) {
-    return text;
-};
 
 /**
  * Get the editors current selection if any, or the contents of the editors
@@ -359,7 +355,6 @@ export function activate(context: vscode.ExtensionContext) {
             }
 
             let text = getSelection(editor);
-            text = stripComments(text);
             text = processOpens(text);
 
             holTerminal!.sendRaw(`${text};\n`);
@@ -378,7 +373,6 @@ export function activate(context: vscode.ExtensionContext) {
             const document = editor.document;
             const currentLine = selection.active.line;
             let text = document.getText(new vscode.Selection(0, 0, currentLine, 0));
-            text = stripComments(text);
             text = processOpens(text);
 
             holTerminal!.sendRaw(`${text};\n`);
