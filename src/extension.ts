@@ -355,7 +355,7 @@ export function activate(context: vscode.ExtensionContext) {
             }
 
             let text = getSelection(editor);
-            text = processOpens(text);
+            text = processOpens(text).replace('\n', ' ');
 
             holTerminal!.sendRaw(`${text};\n`);
         })
@@ -373,7 +373,7 @@ export function activate(context: vscode.ExtensionContext) {
             const document = editor.document;
             const currentLine = selection.active.line;
             let text = document.getText(new vscode.Selection(0, 0, currentLine, 0));
-            text = processOpens(text);
+            text = processOpens(text).replace('\n', ' ');
 
             holTerminal!.sendRaw(`${text};\n`);
         })
@@ -386,13 +386,12 @@ export function activate(context: vscode.ExtensionContext) {
                 return;
             }
 
-            let text = extractGoal(editor);
+            let text = extractGoal(editor)?.replace('\n', ' ');
             if (!text) {
                 vscode.window.showErrorMessage('Unable to select a goal term');
                 error('Unable to select goal term');
                 return;
             }
-            text = text.replace('\n', ' ');
 
             holTerminal!.sendRaw(`g(\`${text}\`);\n`);
         })
