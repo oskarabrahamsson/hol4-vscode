@@ -10,7 +10,12 @@
 		"Other"
 	],
 	"activationEvents": [
-		"onCommand:hol4-mode.startSession"
+		"onCommand:hol4-mode.startSession",
+		"onCommand:hol4-mode.stopSession",
+		"onCommand:hol4-mode.sendSelection",
+		"onCommand:hol4-mode.sendUntilCursor",
+		"onCommand:hol4-mode.sendGoal",
+		"onCommand:hol4-mode.sendTactic"
 	],
 	"main": "./out/extension.js",
 	"contributes": {
@@ -24,8 +29,12 @@
 				"title": "HOL: Stop session"
 			},
 			{
-				"command": "hol4-mode.sendText",
+				"command": "hol4-mode.sendSelection",
 				"title": "HOL: Send selection"
+			},
+			{
+				"command": "hol4-mode.sendUntilCursor",
+				"title": "HOL: Send all up to current line"
 			},
 			{
 				"command": "hol4-mode.sendGoal",

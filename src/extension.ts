@@ -103,6 +103,18 @@ function error(message: string) {
     console.error(`!!! hol-mode: Error: ${message}`);
 }
 
+/** Returns whether the current session is inactive. If it is inactive, then an
+ * error message is printed.
+ */
+function isInactive() {
+    if (!active) {
+        vscode.window.showErrorMessage('No active HOL session; doing nothing.');
+        error('No active session; doing nothing');
+    }
+
+    return !active;
+}
+
 /**
  * Search forward in text and find the start- and end positions for the matched
  * text, and the content within the match (i.e. between the `start` and `stop`
@@ -327,9 +339,7 @@ export function activate(context: vscode.ExtensionContext) {
     // Stop the current session, if any.
     context.subscriptions.push(
         vscode.commands.registerCommand('hol4-mode.stopSession', () => {
-            if (!active) {
-                vscode.window.showErrorMessage('No active HOL session; doing nothing.');
-                error('No active session; doing nothing');
+            if (isInactive()) {
                 return;
             }
 
@@ -340,12 +350,11 @@ export function activate(context: vscode.ExtensionContext) {
         })
     );
 
-    // Send text to the terminal; preprocess to find `open` and `load` calls.
+    // Send selection to the terminal; preprocess to find `open` and `load`
+    // calls.
     context.subscriptions.push(
-        vscode.commands.registerTextEditorCommand('hol4-mode.sendText', (editor) => {
-            if (!active) {
-                vscode.window.showErrorMessage('No active HOL session; doing nothing.');
-                error('No active session; doing nothing');
+        vscode.commands.registerTextEditorCommand('hol4-mode.sendSelection', (editor) => {
+            if (isInactive()) {
                 return;
             }
 
@@ -357,12 +366,29 @@ export function activate(context: vscode.ExtensionContext) {
         })
     );
 
+    // Send all text up to and including the current line in the current editor
+    // to the terminal.
+    context.subscriptions.push(
+        vscode.commands.registerTextEditorCommand('hol4-mode.sendUntilCursor', (editor) => {
+            if (isInactive()) {
+                return;
+            }
+
+            const selection = editor.selection;
+            const document = editor.document;
+            const currentLine = selection.active.line;
+            let text = document.getText(new vscode.Selection(0, 0, currentLine, 0));
+            text = stripComments(text);
+            text = processOpens(text);
+
+            holTerminal!.sendRaw(`${text};\n`);
+        })
+    );
+
     // Send a goal selection to the terminal.
     context.subscriptions.push(
         vscode.commands.registerTextEditorCommand('hol4-mode.sendGoal', (editor) => {
-            if (!active) {
-                vscode.window.showErrorMessage('No active HOL session; doing nothing.');
-                error('No active session; doing nothing');
+            if (isInactive()) {
                 return;
             }
 
@@ -381,9 +407,7 @@ export function activate(context: vscode.ExtensionContext) {
     // Send a tactic selection to the terminal.
     context.subscriptions.push(
         vscode.commands.registerTextEditorCommand('hol4-mode.sendTactic', (editor) => {
-            if (!active) {
-                vscode.window.showErrorMessage('No active HOL session; doing nothing.');
-                error('No active session; doing nothing');
+            if (isInactive()) {
                 return;
             }
 
