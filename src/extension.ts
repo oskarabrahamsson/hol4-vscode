@@ -184,7 +184,7 @@ function processOpens(text: string) {
             .filter((s) => s.length > 0)
             .sort()
             .forEach((s) => theories.push(s));
-        text = text.substring(0, match.matchStart - 1) + text.substring(match.contentEnd);
+        text = text.substring(0, match.matchStart + 1) + text.substring(match.contentEnd);
     }
 
     if (theories.length < 1) {
