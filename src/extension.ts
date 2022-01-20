@@ -410,6 +410,39 @@ export function activate(context: vscode.ExtensionContext) {
             holTerminal!.sendRaw(`e(${text});\n`);
         })
     );
+
+    // Show goal.
+    context.subscriptions.push(
+        vscode.commands.registerCommand('hol4-mode.showGoal', () => {
+            if (isInactive()) {
+                return;
+            }
+
+            holTerminal!.sendRaw('p();\n');
+        })
+    );
+
+    // Rotate goal.
+    context.subscriptions.push(
+        vscode.commands.registerCommand('hol4-mode.rotateGoal', () => {
+            if (isInactive()) {
+                return;
+            }
+
+            holTerminal!.sendRaw('r();\n');
+        })
+    );
+
+    // Drop goal.
+    context.subscriptions.push(
+        vscode.commands.registerCommand('hol4-mode.dropGoal', () => {
+            if (isInactive()) {
+                return;
+            }
+
+            holTerminal!.sendRaw('d();\n');
+        })
+    );
 }
 
 // this method is called when your extension is deactivated
