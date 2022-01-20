@@ -191,11 +191,11 @@ function processOpens(text: string) {
         return text;
     }
 
+    const banner = `val _ = print "Loading: ${theories.join(' ')} ...\\n";`;
     const loads = theories.map((s) => `val _ = load "${s}";`).join('\n');
     const opens = [
         'val _ = HOL_Interactive.toggle_quietdec();',
         `open ${theories.join(' ')};`,
-        `val _ = print "\\nLoaded: ${theories.join(' ')}\\n";`,
         'val _ = HOL_Interactive.toggle_quietdec();'
     ].join('\n');
 
