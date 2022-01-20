@@ -7,7 +7,7 @@
 		"vscode": "^1.63.0"
 	},
 	"categories": [
-		"Other"
+		"Programming Languages"
 	],
 	"activationEvents": [
 		"onLanguage:sml"
