@@ -182,7 +182,7 @@ function processOpens(text: string) {
         "Inductive", "CoInductive", "Triviality", "Datatype", "Type", "Overload"
     ];
     const openTerms = new RegExp(`;\|${stoppers.join('\\s\|\\s')}\\s`);
-    const openBegin = /[^\w]*open\s/;
+    const openBegin = /\s*open\s/;
 
     let theories: string[] = [];
     let match;
