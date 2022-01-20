@@ -195,6 +195,8 @@ function processOpens(text: string) {
         text = text.substring(0, match.matchStart + 1) + text.substring(match.contentEnd);
     }
 
+    text = text.replace(/\n/g, ' ').replace(/\r/g, '');
+
     if (theories.length < 1) {
         return text;
     }
@@ -355,7 +357,7 @@ export function activate(context: vscode.ExtensionContext) {
             }
 
             let text = getSelection(editor);
-            text = processOpens(text).replace('\n', ' ');
+            text = processOpens(text);
 
             holTerminal!.sendRaw(`${text};\n`);
         })
@@ -373,7 +375,7 @@ export function activate(context: vscode.ExtensionContext) {
             const document = editor.document;
             const currentLine = selection.active.line;
             let text = document.getText(new vscode.Selection(0, 0, currentLine, 0));
-            text = processOpens(text).replace('\n', ' ');
+            text = processOpens(text);
 
             holTerminal!.sendRaw(`${text};\n`);
         })
