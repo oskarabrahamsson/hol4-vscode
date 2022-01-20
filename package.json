@@ -44,6 +44,44 @@
 				"command": "hol4-mode.sendTactic",
 				"title": "HOL: Send tactic"
 			}
+		],
+		"keybindings": [
+			{
+				"command": "hol4-mode.startSession",
+				"key": "ctrl+k h h",
+				"mac": "cmd+k h h",
+				"when": "editorLangId == sml"
+			},
+			{
+				"command": "hol4-mode.stopSession",
+				"key": "ctrl+k h x",
+				"mac": "cmd+k h x",
+				"when": "editorLangId == sml"
+			},
+			{
+				"command": "hol4-mode.sendSelection",
+				"key": "ctrl+k h s",
+				"mac": "cmd+k h s",
+				"when": "editorLangId == sml"
+			},
+			{
+				"command": "hol4-mode.sendUntilCursor",
+				"key": "ctrl+k h enter",
+				"mac": "cmd+k h enter",
+				"when": "editorLangId == sml"
+			},
+			{
+				"command": "hol4-mode.sendGoal",
+				"key": "ctrl+k h g",
+				"mac": "cmd+k h g",
+				"when": "editorLangId == sml"
+			},
+			{
+				"command": "hol4-mode.sendTactic",
+				"key": "ctrl+k h e",
+				"mac": "cmd+k h e",
+				"when": "editorLangId == sml"
+			}
 		]
 	},
 	"scripts": {
