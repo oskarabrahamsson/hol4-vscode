@@ -1,0 +1,70 @@
+{
+  "name": "HOL4 Proof script",
+  "scopeName": "source.hol4",
+  "fileTypes": [".sml"],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.block.hol",
+          "begin": "\\(\\*",
+          "end": "\\*\\)"
+        }
+      ]
+    },
+    "escaped-chars": {
+      "name": "constant.character.escape.ml",
+      "match": "\\\\."
+    },
+    "identifier": {
+      "name": "entity.name.identifier.hol",
+      "match": "[a-zA-Z][a-zA-Z0-9_']*"
+    }
+  },
+  "patterns": [
+    {
+      "name": "comment.block.hol",
+      "begin": "\\(\\*",
+      "end": "\\*\\)",
+      "patterns": [{"include": "#comments"}]
+    },
+    {
+      "name": "string.quoted.double.ml",
+      "begin": "\"",
+      "end": "\"",
+      "patterns": [{"include": "#escaped-chars"}]
+    },
+    {
+      "name": "keyword.other.ml",
+      "match": "\\b(val|fun|local|open|let|in|end|structure|struct|signature|sig|type|datatype)\\b"
+    },
+    {
+      "name": "keyword.control.ml",
+      "match": "\\b(if|then|else|while)\\b"
+    },
+    {
+      "name": "keyword.other.hol",
+      "match": "\\b(Type|(Co)?Datatype|Theorem|Triviality|Definition|(Co)?Inductive|Proof|QED|End)\\b"
+    },
+    {
+      "name": "support.function.hol",
+      "match": "\\b(new_theory|export_theory|set_grammar_ancestry)\\b"
+    },
+    {
+      "name": "support.function.hol",
+      "match": "\\\\\\\\"
+    },
+    {
+      "name": "keyword.operator.ml",
+      "match": "\\b(andalso|orelse|before|not)\\b"
+    },
+    {
+      "name": "constant.language.ml",
+      "match": "\\b(true|false|nil|SOME|NONE)\\b"
+    },
+    {
+      "name": "constant.numeric.ml",
+      "match": "\\b\\d*\\.?\\d+((e|e)(\\+|\\-)?\\d+)?\\b"
+    }
+  ]
+}

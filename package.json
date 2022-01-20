@@ -10,10 +10,27 @@
 		"Programming Languages"
 	],
 	"activationEvents": [
+		"onLanguage:hol4",
 		"onLanguage:sml"
 	],
 	"main": "./out/extension.js",
 	"contributes": {
+		"grammars": [
+			{
+				"language": "hol4",
+				"scopeName": "source.hol4",
+				"path": "./hol4-grammar.json"
+			}
+		],
+		"languages": [
+			{
+				"id": "hol4",
+				"extensions": [".sml"],
+				"aliases": ["HOL4"],
+				"configuration": "./hol4-language.json",
+				"filenamePatterns": ["*Script.sml"]
+			}
+		],
 		"commands": [
 			{
 				"command": "hol4-mode.startSession",
