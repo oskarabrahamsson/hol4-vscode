@@ -10,12 +10,7 @@
 		"Other"
 	],
 	"activationEvents": [
-		"onCommand:hol4-mode.startSession",
-		"onCommand:hol4-mode.stopSession",
-		"onCommand:hol4-mode.sendSelection",
-		"onCommand:hol4-mode.sendUntilCursor",
-		"onCommand:hol4-mode.sendGoal",
-		"onCommand:hol4-mode.sendTactic"
+		"onLanguage:sml"
 	],
 	"main": "./out/extension.js",
 	"contributes": {
@@ -43,44 +38,74 @@
 			{
 				"command": "hol4-mode.sendTactic",
 				"title": "HOL: Send tactic"
+			},
+			{
+				"command": "hol4-mode.showGoal",
+				"title": "HOL: Show goal"
+			},
+			{
+				"command": "hol4-mode.rotateGoal",
+				"title": "HOL: Rotate goal"
+			},
+			{
+				"command": "hol4-mode.dropGoal",
+				"title": "HOL: Drop goal"
 			}
 		],
 		"keybindings": [
 			{
 				"command": "hol4-mode.startSession",
-				"key": "ctrl+k h h",
-				"mac": "cmd+k h h",
-				"when": "editorLangId == sml"
+				"key": "ctrl+h ctrl+h",
+				"mac": "cmd+h cmd+h",
+				"when": "editorFocus"
 			},
 			{
 				"command": "hol4-mode.stopSession",
-				"key": "ctrl+k h x",
-				"mac": "cmd+k h x",
-				"when": "editorLangId == sml"
+				"key": "ctrl+h ctrl+x",
+				"mac": "cmd+h ctrl+x",
+				"when": "editorFocus"
 			},
 			{
 				"command": "hol4-mode.sendSelection",
-				"key": "ctrl+k h s",
-				"mac": "cmd+k h s",
-				"when": "editorLangId == sml"
+				"key": "ctrl+h s",
+				"mac": "cmd+h s",
+				"when": "editorFocus"
 			},
 			{
 				"command": "hol4-mode.sendUntilCursor",
-				"key": "ctrl+k h enter",
-				"mac": "cmd+k h enter",
-				"when": "editorLangId == sml"
+				"key": "ctrl+h ctrl+s",
+				"mac": "cmd+h cmd+s",
+				"when": "editorFocus"
 			},
 			{
 				"command": "hol4-mode.sendGoal",
-				"key": "ctrl+k h g",
-				"mac": "cmd+k h g",
-				"when": "editorLangId == sml"
+				"key": "ctrl+h g",
+				"mac": "cmd+h g",
+				"when": "editorFocus"
 			},
 			{
 				"command": "hol4-mode.sendTactic",
-				"key": "ctrl+k h e",
-				"mac": "cmd+k h e",
-				"when": "editorLangId == sml"
+				"key": "ctrl+h e",
+				"mac": "cmd+h e",
+				"when": "editorFocus"
+			},
+			{
+				"command": "hol4-mode.showGoal",
+				"key": "ctrl+h p",
+				"mac": "cmd+h p",
+				"when": "editorFocus"
+			},
+			{
+				"command": "hol4-mode.rotateGoal",
+				"key": "ctrl+h r",
+				"mac": "cmd+h r",
+				"when": "editorFocus"
+			},
+			{
+				"command": "hol4-mode.dropGoal",
+				"key": "ctrl+h d",
+				"mac": "cmd+h d",
+				"when": "editorFocus"
 			}
 		]
 	},
