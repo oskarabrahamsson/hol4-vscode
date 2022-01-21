@@ -197,7 +197,7 @@ function processOpens(text: string) {
         text = text.substring(0, match.matchStart + 1) + text.substring(match.contentEnd);
     }
 
-    text = text.replace(/\n/g, ' ').replace(/\r/g, '');
+    text = text.replace(/\n\s*\n/g, '\n').replace(/\r/g, '');
 
     if (theories.length < 1) {
         return text;
