@@ -35,36 +35,30 @@
       "patterns": [{"include": "#escaped-chars"}]
     },
     {
-      "name": "keyword.other.ml",
-      "match": "\\b(val|fun|local|open|let|in|end|structure|struct|signature|sig|type|datatype)\\b"
+      "begin": "^(Theorem|Triviality)\\s*([^\\[:]*)(\\[([^\\]]*)\\])?(:)\\s*$",
+      "end": "^Proof\\s*$",
+      "beginCaptures": {
+        "1": {"name": "keyword.other.theorem.hol"},
+        "2": {"name": "entity.name.function.hol"},
+        "4": {"name": "entity.name.tag.thmtag.hol"}
+      },
+      "endCaptures": {
+        "0": {"name": "keyword.other.proof.hol"}
+      }
     },
     {
-      "name": "keyword.control.ml",
-      "match": "\\b(if|then|else|while)\\b"
+      "begin": "^(CoDatatype|Datatype):\\s*",
+      "end": "^End\\s$",
+      "beginCaptures": {
+        "1": {"name": "keyword.other.datatype.hol"}
+      },
+      "endCaptures": {
+        "0": {"name": "keyword.other.end.hol"}
+      }
     },
     {
-      "name": "keyword.other.hol",
-      "match": "\\b(Type|(Co)?Datatype|Theorem|Triviality|Definition|(Co)?Inductive|Proof|QED|End)\\b"
-    },
-    {
-      "name": "support.function.hol",
-      "match": "\\b(new_theory|export_theory|set_grammar_ancestry)\\b"
-    },
-    {
-      "name": "support.function.hol",
-      "match": "\\\\\\\\"
-    },
-    {
-      "name": "keyword.operator.ml",
-      "match": "\\b(andalso|orelse|before|not)\\b"
-    },
-    {
-      "name": "constant.language.ml",
-      "match": "\\b(true|false|nil|SOME|NONE)\\b"
-    },
-    {
-      "name": "constant.numeric.ml",
-      "match": "\\b\\d*\\.?\\d+((e|e)(\\+|\\-)?\\d+)?\\b"
+      "match": "^(Termination|Proof|QED|End)\\s*",
+      "name": "keyword.other.end.hol"
     }
   ]
 }
