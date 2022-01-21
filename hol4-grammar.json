@@ -3,59 +3,182 @@
   "scopeName": "source.hol4",
   "fileTypes": [".sml"],
   "repository": {
+
+    "todos": {
+      "name": "invalid.todo.ml",
+      "match": "(TODO|NOTE|XXX|FIXME)"
+    },
     "comments": {
       "name": "comment.block.hol",
       "begin": "\\(\\*",
       "end": "\\*\\)",
-      "patterns": [ { "include": "#comments" } ]
+      "patterns": [
+        { "include": "#comments" },
+        { "include": "#todos" }
+      ]
     },
     "escaped-chars": {
       "name": "constant.character.escape.ml",
       "match": "\\\\."
     },
     "identifier": {
-      "name": "entity.name.identifier.hol",
+      "name": "entity.name.identifier.ml",
       "match": "[a-zA-Z][a-zA-Z0-9_']*"
-    }
-  },
-  "patterns": [
-    {
-      "name": "comment.block.hol",
-      "begin": "\\(\\*",
-      "end": "\\*\\)",
-      "patterns": [{"include": "#comments"}]
     },
-    {
+    "ml-string": {
       "name": "string.quoted.double.ml",
       "begin": "\"",
       "end": "\"",
       "patterns": [{"include": "#escaped-chars"}]
     },
+    "ml-char": {
+      "name": "string.quoted.char.ml",
+      "begin": "#\"",
+      "end": "\"",
+      "patterns": [{"include": "#escaped-chars"}]
+    },
+    "number": {
+      "name": "constant.numeric.integer.ml",
+      "match": "(?<![+-\\.eE])\\b\\d+\\b(?!\\.)"
+    },
+    "number-float": {
+      "name": "constant.numeric.float.ml",
+      "match": "\\b\\d+\\.\\d*([eE][+-]?\\d+)?\\b"
+    },
+    "ml-keyword": {
+      "name": "keyword.other.reserved.ml",
+      "match": "\\b(let|local|open|in|end|val|fun|and|struct|sig|infix|infixl|structure|signature|datatype|exception|type)\\b"
+    },
+    "ml-control": {
+      "name": "keyword.control.ml",
+      "match": "\\b(if|then|else|raise|handle|case|of|while|before)\\b"
+    },
+    "ml-operator": {
+      "name": "keyword.operator.ml",
+      "match": "([<>=_+-/\\*]|=>|>=|<=|\\^|\\||:|:=|::|!|;)"
+    },
+
+    "term-quote1": {
+      "begin": "`(?!`)",
+      "end": "(?<!`)`",
+      "name": "string.quoted.term.hol",
+      "patterns": [
+        {
+          "include": "#hol-term"
+        },
+        {
+          "include": "#comments"
+        }
+      ]
+    },
+    "term-quote2": {
+      "begin": "``(?!`)",
+      "end": "(?<!`)``",
+      "name": "string.quoted.term.hol",
+      "patterns": [
+        {
+          "include": "#hol-term"
+        },
+        {
+          "include": "#comments"
+        }
+      ]
+    },
+
+    "hol-term": {
+      "name": "invalid markup.italic",
+      "match": "[\\w∀∃∧⇒'.{}≠<>∪∈\\|≼]+"
+    },
+
+    "definition": {
+      "begin": "^(Definition)\\s+([\\w_']*)(\\[([^\\]]*)\\])?(:)",
+      "end": "^(Termination|End)",
+      "beginCaptures": {
+        "1": {"name": "keyword.other.definitioin.hol"},
+        "2": {"name": "entity.name.theorem.hol"},
+        "4": {"name": "entity.name.tag.attribute.hol"}
+      },
+      "endCaptures": {
+        "0": {"name": "keyword.other.def-end.hol"}
+      },
+      "patterns": [
+        {
+          "include": "#hol-term"
+        },
+        {
+          "include": "#comments"
+        }
+      ]
+    },
+    "theorem-assign": {
+      "match": "^(Theorem|Triviality|Type|Overload)\\s+([\\w_']*)(\\[([^\\]]*)\\])?\\s*(=)",
+      "captures": {
+        "1": {"name": "keyword.other.theorem.hol"},
+        "2": {"name": "entity.name.theorem.hol"},
+        "4": {"name": "entity.name.tag.attribute.hol"}
+      }
+    },
+    "theorem-proof":
     {
-      "begin": "^(Theorem|Triviality)\\s*([^\\[:]*)(\\[([^\\]]*)\\])?(:)\\s*$",
-      "end": "^Proof\\s*$",
+      "begin": "^(Theorem|Triviality)\\s+([\\w_']*)(\\[([^\\]]*)\\])?(:)",
+      "end": "^Proof",
       "beginCaptures": {
         "1": {"name": "keyword.other.theorem.hol"},
-        "2": {"name": "entity.name.function.hol"},
-        "4": {"name": "entity.name.tag.thmtag.hol"}
+        "2": {"name": "entity.name.theorem.hol"},
+        "4": {"name": "entity.name.tag.attribute.hol"}
       },
       "endCaptures": {
         "0": {"name": "keyword.other.proof.hol"}
-      }
-    },
-    {
-      "begin": "^(CoDatatype|Datatype):\\s*",
-      "end": "^End\\s$",
-      "beginCaptures": {
-        "1": {"name": "keyword.other.datatype.hol"}
       },
-      "endCaptures": {
-        "0": {"name": "keyword.other.end.hol"}
-      }
+      "patterns": [
+        {
+          "include": "#hol-term"
+        },
+        {
+          "include": "#comments"
+        }
+      ]
     },
+    "proof-qed":
     {
-      "match": "^(Termination|Proof|QED|End)\\s*",
-      "name": "keyword.other.end.hol"
+      "begin": "(?<=^Proof)",
+      "end": "^QED",
+      "endCaptures": {
+        "0": {"name": "keyword.other.qed.hol"}
+      },
+      "patterns": [
+        { "include": "#tactical" },
+        { "include": "#cheat" },
+        { "include": "#term-quote1" },
+        { "include": "#term-quote2" }
+      ]
+    },
+
+    "tactical": {
+      "name": "entity.name.tag.tactical.hol",
+      "match": "(\\\\\\\\|THEN[1]?|>>|>-|>~)"
+    },
+    "cheat": {
+      "name": "invalid.tactic.cheat markup.underline",
+      "match": "\\bcheat\\b"
     }
+
+  },
+  "patterns": [
+    { "include": "#comments"       },
+    { "include": "#ml-string"      },
+    { "include": "#ml-char"        },
+    { "include": "#number"         },
+    { "include": "#number-float"   },
+    { "include": "#ml-keyword"     },
+    { "include": "#ml-control"     },
+    { "include": "#ml-operator"    },
+
+    { "include": "#theorem-assign" },
+    { "include": "#theorem-proof"  },
+    { "include": "#proof-qed"      },
+    { "include": "#definition"     },
+    { "include": "#term-quote1"    },
+    { "include": "#term-quote2"    }
   ]
 }
