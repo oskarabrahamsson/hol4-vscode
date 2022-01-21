@@ -155,7 +155,7 @@ function searchForward(text: string,  offset: number, init: RegExp, stop: RegExp
         matchEnd: matchEnd,
         contentEnd: contentEnd
     };
-};
+}
 
 
 /**
@@ -183,11 +183,13 @@ function processOpens(text: string) {
     ];
     const openTerms = new RegExp(`;\|${stoppers.join('\\s\|\\s')}\\s`);
     const openBegin = /\s*open\s/;
+    const comment = /\(\*(\*[^\)]|[^\*])*\*\)/g;
 
     let theories: string[] = [];
     let match;
     while ((match = searchForward(text, 0, openBegin, openTerms))) {
         text.slice(match.contentStart, match.contentEnd)
+            .replace(comment, '')
             .split(/\s/)
             .filter((s) => s.length > 0)
             .sort()
