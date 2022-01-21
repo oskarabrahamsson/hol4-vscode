@@ -4,13 +4,10 @@
   "fileTypes": [".sml"],
   "repository": {
     "comments": {
-      "patterns": [
-        {
-          "name": "comment.block.hol",
-          "begin": "\\(\\*",
-          "end": "\\*\\)"
-        }
-      ]
+      "name": "comment.block.hol",
+      "begin": "\\(\\*",
+      "end": "\\*\\)",
+      "patterns": [ { "include": "#comments" } ]
     },
     "escaped-chars": {
       "name": "constant.character.escape.ml",
