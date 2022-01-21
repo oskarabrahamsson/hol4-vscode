@@ -1,0 +1,6 @@
+# TODOs
+
+- Set up highlighting for logical terms
+- Set up highlighting to accept all 'Datatype' 'Inductive' etc things
+- Make extension.ts insert load calls when it finds a ML identifier that is
+  qualified in e.g. tactics
