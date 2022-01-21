@@ -210,8 +210,9 @@ function processOpens(text: string) {
         `open ${theories.join(' ')};`,
         'val _ = HOL_Interactive.toggle_quietdec();'
     ].join('\n');
+    const bannerDone = 'val _ = print "Done loading theories.\\n"';
 
-    return [banner, loads, opens, text].join('\n');
+    return [banner, loads, opens, bannerDone, text].join('\n');
 }
 
 /**
