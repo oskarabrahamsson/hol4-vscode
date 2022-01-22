@@ -97,7 +97,7 @@
       ]
     },
     "hol-binder": {
-      "match": "([∀λ∃\\!\\?]|∃\\!|\\?\\!)\\s*([^\\.]+)\\s*(\\.)",
+      "match": "([∀λ∃\\!\\?]|∃\\!|\\?\\!|some)\\s*([^\\.]+)\\s*(\\.)",
       "captures": {
         "1": { "name": "keyword.other.binder.hol" },
         "2": { "name": "variable.binder.hol" },
@@ -105,26 +105,38 @@
       }
     },
     "hol-connective": {
-      "match": "([¬~=∧≠⇒:\\<\\>\\$\\+\\*\\-/]|/\\\\)",
+      "match": "(/\\\\|\\\\/|==>|UNION|DIFF|[¬~=∧≠⇒:\\<>$\\+\\*\\-/\\|])",
       "name": "keyword.operator.connective.hol"
     },
     "hol-special": {
       "match": "\\b(UNIV|IMAGE|FST|SND|LENGTH|MAP|LIST_REL|ALOOKUP|FLOOKUP|OPTREL|REVERSE)\\b",
       "name": "entity.name.function.hol"
     },
+    "hol-keywords": {
+      "match": "\\b(case|of|if|then|else)\\b",
+      "name": "keyword.control.hol"
+    },
     "hol-constructor": {
       "match": "\\b[A-Z][\\w_']*\\b",
       "name": "entity.name.type.constructor.hol"
+    },
+    "hol-constants": {
+      "match": "\\b(T|F|EMPTY)\\b",
+      "name": "constant.language.various.hol"
     },
     "hol-term": {
       "patterns": [
         { "include": "#comments" },
         { "include": "#ml-string"},
         { "include": "#ml-char"},
+        { "include": "#number" },
+        { "include": "#number-float" },
         { "include": "#hol-binder" },
         { "include": "#hol-connective" },
         { "include": "#hol-special" },
-        { "include": "#hol-constructor" }
+        { "include": "#hol-constructor" },
+        { "include": "#hol-keywords"},
+        { "include": "#hol-constants" }
       ]
     },
     "non-standard-ml": {
