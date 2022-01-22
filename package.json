@@ -79,7 +79,7 @@
 			{
 				"command": "hol4-mode.stopSession",
 				"key": "ctrl+h ctrl+x",
-				"mac": "cmd+h ctrl+x",
+				"mac": "cmd+h cmd+x",
 				"when": "editorFocus"
 			},
 			{
