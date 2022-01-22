@@ -151,7 +151,10 @@
         { "include": "#ml-operator" },
         { "include": "#term-quote-ticks" },
         { "include": "#term-quote-unicode-single" },
-        { "include": "#term-quote-unicode-double" }
+        { "include": "#term-quote-unicode-double" },
+        { "include": "#tactical" },
+        { "include": "#cheat" },
+        { "include": "#tactics"}
       ]
     },
     "rule-label": {
@@ -239,8 +242,12 @@
       ]
     },
     "tactical": {
-      "name": "entity.name.tag.tactical.hol",
-      "match": "(\\\\\\\\|THEN[1]?|>>|>-|>~)"
+      "name": "keyword.control.tactical.ml",
+      "match": "(\\\\\\\\|THEN[1]?|>>|>-|>~|by|suffices_by)"
+    },
+    "tactics": {
+      "name": "support.function.tactic.ml",
+      "match": "\\b(ho_match_mp_tac|((asm|full)_)?simp(_tac)?|rw|fs|rfs|gs|gvs|gns|imp_res_tac|rpt|Cases|Cases_on|Induct|Induct_on|recInduct|pop_assum|mp_tac|drule(_(then|at|at_then))?|irule(_at)?|mp_then|strip_tac|(strip_)?assume_tac|disch_then|disch_tac|qx_choose_then|(qx_)?gen_tac|rewrite_tac|wf_rel_tac|(PURE_)?(TOP_)?CASE_TAC|CONV_TAC)\\b"
     },
     "cheat": {
       "name": "invalid.tactic.cheat markup.underline",
