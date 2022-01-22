@@ -123,6 +123,21 @@
         { "include": "#hol-constructor" }
       ]
     },
+    "non-standard-ml": {
+      "patterns": [
+        { "include": "#comments" },
+        { "include": "#ml-string" },
+        { "include": "#ml-char" },
+        { "include": "#number" },
+        { "include": "#number-float" },
+        { "include": "#ml-keyword" },
+        { "include": "#ml-control" },
+        { "include": "#ml-operator" },
+        { "include": "#term-quote-ticks" },
+        { "include": "#term-quote-unicode-single" },
+        { "include": "#term-quote-unicode-double" }
+      ]
+    },
     "definition": {
       "begin": "^(Definition)\\s+([\\w_']*)(\\[([^\\]]*)\\])?(:)",
       "end": "^(Termination|End)",
@@ -170,12 +185,7 @@
         "0": {"name": "keyword.other.qed.hol"}
       },
       "patterns": [
-        { "include": "#tactical" },
-        { "include": "#comments" },
-        { "include": "#cheat" },
-        { "include": "#term-quote-ticks" },
-        { "include": "#term-quote-unicode-single" },
-        { "include": "#term-quote-unicode-double" }
+        { "include": "#non-standard-ml" }
       ]
     },
     "tactical": {
@@ -188,20 +198,10 @@
     }
   },
   "patterns": [
-    { "include": "#comments" },
-    { "include": "#ml-string" },
-    { "include": "#ml-char" },
-    { "include": "#number" },
-    { "include": "#number-float" },
-    { "include": "#ml-keyword" },
-    { "include": "#ml-control" },
-    { "include": "#ml-operator" },
     { "include": "#theorem-assign" },
     { "include": "#theorem-proof" },
     { "include": "#proof-qed" },
     { "include": "#definition" },
-    { "include": "#term-quote-ticks" },
-    { "include": "#term-quote-unicode-single" },
-    { "include": "#term-quote-unicode-double" }
+    { "include": "#non-standard-ml" }
   ]
 }
