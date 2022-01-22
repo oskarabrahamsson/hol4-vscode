@@ -451,6 +451,10 @@ export function activate(context: vscode.ExtensionContext) {
     // Unicode completions.
     /* eslint-disable @typescript-eslint/naming-convention */
     let completions: { [key: string] : string } = {
+        "`": "‘’",
+        "``": "“”",
+        "<<": "«",
+        ">>": "»",
         "!": "∀",
         "forall": "∀",
         "?": "∃",
