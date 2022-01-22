@@ -57,16 +57,24 @@
 				"title": "HOL: Send tactic"
 			},
 			{
-				"command": "hol4-mode.showGoal",
-				"title": "HOL: Show goal"
+				"command": "hol4-mode.proofmanShow",
+				"title": "HOL: Show current goal"
 			},
 			{
-				"command": "hol4-mode.rotateGoal",
-				"title": "HOL: Rotate goal"
+				"command": "hol4-mode.proofmanRotate",
+				"title": "HOL: Rotate between subgoals"
 			},
 			{
-				"command": "hol4-mode.dropGoal",
-				"title": "HOL: Drop goal"
+				"command": "hol4-mode.proofmanRestart",
+				"title": "HOL: Restart proof"
+			},
+			{
+				"command": "hol4-mode.proofmanDrop",
+				"title": "HOL: Drop proof"
+			},
+			{
+				"command": "hol4-mode.proofmanBack",
+				"title": "HOL: Step backwards in proof"
 			}
 		],
 		"keybindings": [
