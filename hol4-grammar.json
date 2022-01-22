@@ -19,7 +19,7 @@
     },
     "escaped-chars": {
       "name": "constant.character.escape.ml",
-      "match": "\\\\."
+      "match": "\\\\\\w"
     },
     "identifier": {
       "name": "entity.name.identifier.ml",
@@ -55,14 +55,16 @@
     },
     "ml-operator": {
       "name": "keyword.operator.ml",
-      "match": "([<>=_\\+-/\\*]|=>|>=|<=|\\^|\\||:|:=|::|!|;)"
+      "match": "([\\<\\>=\\_\\+\\-/\\*]|=\\>|\\>=|\\<=|\\^|\\||:|:=|::|!|;)"
     },
-
     "term-quote-ticks": {
-      "match": "(?<!`)(`+)([^`]+)(\\1)(?!`)",
-      "captures": {
-        "1": { "name": "string.quoted.termquote.hol" },
-        "3": { "name": "string.quoted.termquote.hol" }
+      "begin": "(?<!`)(`+)",
+      "end": "(\\1)(?!`)",
+      "beginCaptures": {
+        "0": { "name": "string.quoted.termquote.hol" }
+      },
+      "endCaptures": {
+        "0": { "name": "string.quoted.termquote.hol" }
       },
       "patterns": [
         { "include": "#hol-term" }
@@ -94,22 +96,24 @@
         { "include": "#hol-term" }
       ]
     },
-    "hol-quantifier": {
-      "match": "([\\!]|some)",
+    "hol-binder": {
+      "match": "([∀λ∃\\!\\?]|∃\\!|\\?\\!)\\s*([^\\.]+)\\s*(\\.)",
       "captures": {
-        "0": "invalid"
+        "1": { "name": "keyword.other.binder.hol" },
+        "2": { "name": "variable.binder.hol" },
+        "3": { "name": "keyword.other.binder-end.hol" }
       }
     },
     "hol-connective": {
-      "match": "([=∧≠:<>⇒$\\+\\*-/]|/\\\\)",
-      "name": "invalid.operator.connective.hol"
+      "match": "([¬~=∧≠⇒:\\<\\>\\$\\+\\*\\-/]|/\\\\)",
+      "name": "keyword.operator.connective.hol"
     },
     "hol-special": {
-      "match": "\\b(UNIV|IMAGE|FST|SND|LENGTH|MAP)\\b",
+      "match": "\\b(UNIV|IMAGE|FST|SND|LENGTH|MAP|LIST_REL|ALOOKUP|FLOOKUP|OPTREL|REVERSE)\\b",
       "name": "entity.name.function.hol"
     },
     "hol-constructor": {
-      "match": "\\b(INL|INR|SOME|NONE)\\b",
+      "match": "\\b[A-Z][\\w_']*\\b",
       "name": "entity.name.type.constructor.hol"
     },
     "hol-term": {
@@ -117,7 +121,7 @@
         { "include": "#comments" },
         { "include": "#ml-string"},
         { "include": "#ml-char"},
-        { "include": "#hol-quantifier" },
+        { "include": "#hol-binder" },
         { "include": "#hol-connective" },
         { "include": "#hol-special" },
         { "include": "#hol-constructor" }
@@ -138,12 +142,18 @@
         { "include": "#term-quote-unicode-double" }
       ]
     },
+    "rule-label": {
+      "match": "^(\\[)([~\\w_']*)(:\\])",
+      "captures": {
+        "2": {"name": "entity.name.tag.rule-label.hol markup.underline"}
+      }
+    },
     "definition": {
       "begin": "^(Definition)\\s+([\\w_']*)(\\[([^\\]]*)\\])?(:)",
       "end": "^(Termination|End)",
       "beginCaptures": {
-        "1": {"name": "keyword.other.definitioin.hol"},
-        "2": {"name": "entity.name.theorem.hol"},
+        "1": {"name": "keyword.other.definition.hol"},
+        "2": {"name": "entity.name.function.theorem.hol"},
         "4": {"name": "entity.name.tag.attribute.hol"}
       },
       "endCaptures": {
@@ -151,6 +161,21 @@
       },
       "patterns": [
         { "include": "#hol-term" }
+      ]
+    },
+    "inductive": {
+      "begin": "^((?:Co)?Inductive)\\s+([\\w_']*)(:)",
+      "end": "^End",
+      "beginCaptures": {
+        "1": { "name": "keyword.other.inductive.hol" },
+        "2": { "name": "entity.name.function.relation.hol" }
+      },
+      "endCaptures": {
+        "0" : { "name": "keyword.other.def-end.hol" }
+      },
+      "patterns": [
+        { "include": "#hol-term" },
+        { "include": "#rule-label" }
       ]
     },
     "theorem-assign": {
@@ -202,6 +227,7 @@
     { "include": "#theorem-proof" },
     { "include": "#proof-qed" },
     { "include": "#definition" },
+    { "include": "#inductive" },
     { "include": "#non-standard-ml" }
   ]
 }
