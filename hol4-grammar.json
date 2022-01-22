@@ -19,7 +19,7 @@
     },
     "escaped-chars": {
       "name": "constant.character.escape.ml",
-      "match": "\\\\\\w"
+      "match": "\\\\."
     },
     "identifier": {
       "name": "entity.name.identifier.ml",
