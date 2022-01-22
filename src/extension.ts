@@ -157,7 +157,6 @@ function searchForward(text: string,  offset: number, init: RegExp, stop: RegExp
     };
 }
 
-
 /**
  * Get the editors current selection if any, or the contents of the editors
  * current line otherwise.
@@ -448,6 +447,65 @@ export function activate(context: vscode.ExtensionContext) {
             holTerminal!.sendRaw('d();\n');
         })
     );
+
+    // Unicode completions.
+    /* eslint-disable @typescript-eslint/naming-convention */
+    let completions: { [key: string] : string } = {
+        "!": "∀",
+        "forall": "∀",
+        "?": "∃",
+        "exists": "∃",
+        "\\": "λ",
+        "lambda": "λ",
+        "\\/": "∨",
+        "or": "∨",
+        "/\\": "∧",
+        "and": "∧",
+        "~": "¬",
+        "not": "¬",
+        "union": "∪",
+        "UNION": "∪",
+        "in": "∈",
+        "IN": "∈",
+        "notin": "∉",
+        "NOTIN": "∉",
+        "subset": "⊆",
+        "SUBSET": "⊆",
+        "psubset": "⊂",
+        "PSUBSET": "⊂",
+        "==>": "⇒",
+        "implies": "⇒",
+        "<=": "≤",
+        ">=": "≥",
+        "<=>": "⇔",
+        "<>": "≠",
+    };
+
+    const unicodeCompletionProvider: vscode.CompletionItemProvider = {
+        async provideCompletionItems(document, position, token, context) {
+            let items = [];
+            let range = new vscode.Range(position.translate(0, -1), position);
+            for (const matchKey in completions) {
+                let matchVal = completions[matchKey];
+                let trigger = context.triggerCharacter;
+                let item = new vscode.CompletionItem(context.triggerCharacter + matchKey);
+                item.kind = vscode.CompletionItemKind.Text;
+                item.range = range;
+                item.detail = matchVal;
+                item.insertText = matchVal;
+                items.push(item);
+            }
+            return items;
+        }
+    };
+
+    let selector: vscode.DocumentSelector = {
+        scheme: 'file',
+        language: 'hol4'
+    };
+    let triggers= ['\\'];
+    vscode.languages.registerCompletionItemProvider(selector, unicodeCompletionProvider, ...triggers);
+
 }
 
 // this method is called when your extension is deactivated
