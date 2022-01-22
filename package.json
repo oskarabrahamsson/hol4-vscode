@@ -75,6 +75,10 @@
 			{
 				"command": "hol4-mode.proofmanBack",
 				"title": "HOL: Step backwards in proof"
+			},
+			{
+				"command": "hol4-mode.holmake",
+				"title": "HOL: Run Holmake in directory of the current document"
 			}
 		],
 		"keybindings": [

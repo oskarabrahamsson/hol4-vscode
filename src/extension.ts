@@ -470,6 +470,20 @@ export function activate(context: vscode.ExtensionContext) {
         })
     );
 
+    // Run Holmake in current directory
+    context.subscriptions.push(
+        vscode.commands.registerTextEditorCommand('hol4-mode.holmake', (editor) => {
+            const docPath = path.dirname(editor.document.uri.fsPath);
+            const terminal = vscode.window.createTerminal({
+                cwd: docPath,
+                name: 'Holmake',
+                shellPath: 'Holmake',
+                message: `Running Holmake in directory: ${docPath} ...`
+            });
+            terminal.show(true);
+        })
+    );
+
     // Unicode completions.
     /* eslint-disable @typescript-eslint/naming-convention */
     let completions: { [key: string] : string } = {
