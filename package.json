@@ -74,55 +74,67 @@
 				"command": "hol4-mode.startSession",
 				"key": "ctrl+h ctrl+h",
 				"mac": "cmd+h cmd+h",
-				"when": "editorFocus"
+				"when": "editorLangId == hol4"
 			},
 			{
 				"command": "hol4-mode.stopSession",
 				"key": "ctrl+h ctrl+x",
 				"mac": "cmd+h cmd+x",
-				"when": "editorFocus"
+				"when": "editorLangId == hol4"
 			},
 			{
 				"command": "hol4-mode.sendSelection",
 				"key": "ctrl+h s",
 				"mac": "cmd+h s",
-				"when": "editorFocus"
+				"when": "editorLangId == hol4"
 			},
 			{
 				"command": "hol4-mode.sendUntilCursor",
 				"key": "ctrl+h ctrl+s",
 				"mac": "cmd+h cmd+s",
-				"when": "editorFocus"
+				"when": "editorLangId == hol4"
 			},
 			{
 				"command": "hol4-mode.sendGoal",
 				"key": "ctrl+h g",
 				"mac": "cmd+h g",
-				"when": "editorFocus"
+				"when": "editorLangId == hol4"
 			},
 			{
 				"command": "hol4-mode.sendTactic",
 				"key": "ctrl+h e",
 				"mac": "cmd+h e",
-				"when": "editorFocus"
+				"when": "editorLangId == hol4"
 			},
 			{
-				"command": "hol4-mode.showGoal",
+				"command": "hol4-mode.proofmanShow",
 				"key": "ctrl+h p",
 				"mac": "cmd+h p",
-				"when": "editorFocus"
+				"when": "editorLangId == hol4"
 			},
 			{
-				"command": "hol4-mode.rotateGoal",
+				"command": "hol4-mode.proofmanBack",
+				"key": "ctrl+h b",
+				"mac": "cmd+h b",
+				"when": "editorLangId == hol4"
+			},
+			{
+				"command": "hol4-mode.proofmanRestart",
 				"key": "ctrl+h r",
 				"mac": "cmd+h r",
-				"when": "editorFocus"
+				"when": "editorLangId == hol4"
 			},
 			{
-				"command": "hol4-mode.dropGoal",
+				"command": "hol4-mode.proofmanRotate",
+				"key": "ctrl+h shift+r",
+				"mac": "cmd+h shift+r",
+				"when": "editorLangId == hol4"
+			},
+			{
+				"command": "hol4-mode.proofmanDrop",
 				"key": "ctrl+h d",
 				"mac": "cmd+h d",
-				"when": "editorFocus"
+				"when": "editorLangId == hol4"
 			}
 		]
 	},

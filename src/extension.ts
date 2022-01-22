@@ -417,34 +417,56 @@ export function activate(context: vscode.ExtensionContext) {
 
     // Show goal.
     context.subscriptions.push(
-        vscode.commands.registerCommand('hol4-mode.showGoal', () => {
+        vscode.commands.registerCommand('hol4-mode.proofmanShow', () => {
             if (isInactive()) {
                 return;
             }
 
-            holTerminal!.sendRaw('p();\n');
+            holTerminal!.sendRaw('proofManagerLib.p ();\n');
         })
     );
 
     // Rotate goal.
     context.subscriptions.push(
-        vscode.commands.registerCommand('hol4-mode.rotateGoal', () => {
+        vscode.commands.registerCommand('hol4-mode.proofmanRotate', () => {
             if (isInactive()) {
                 return;
             }
 
-            holTerminal!.sendRaw('r();\n');
+            holTerminal!.sendRaw('proofManagerLib.rotate 1;\n');
+        })
+    );
+
+    // Backstep in goal.
+    context.subscriptions.push(
+        vscode.commands.registerCommand('hol4-mode.proofmanBack', () => {
+            if (isInactive()) {
+                return;
+            }
+
+            holTerminal!.sendRaw('proofManagerLib.backup ();\n');
+        })
+    );
+
+    // Restart goal.
+    context.subscriptions.push(
+        vscode.commands.registerCommand('hol4-mode.proofmanRestart', () => {
+            if (isInactive()) {
+                return;
+            }
+
+            holTerminal!.sendRaw('proofManagerLib.restart ();\n');
         })
     );
 
     // Drop goal.
     context.subscriptions.push(
-        vscode.commands.registerCommand('hol4-mode.dropGoal', () => {
+        vscode.commands.registerCommand('hol4-mode.proofmanDrop', () => {
             if (isInactive()) {
                 return;
             }
 
-            holTerminal!.sendRaw('d();\n');
+            holTerminal!.sendRaw('proofManagerLib.drop();\n');
         })
     );
 
