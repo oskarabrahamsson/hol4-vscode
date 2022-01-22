@@ -160,6 +160,19 @@
         "2": {"name": "entity.name.tag.rule-label.hol markup.underline"}
       }
     },
+    "datatype": {
+      "begin": "^(Datatype):",
+      "end": "^End",
+      "beginCaptures": {
+        "1": {"name": "keyword.other.datatype.hol"}
+      },
+      "endCaptures": {
+        "0": {"name": "keyword.other.datatype-end.hol"}
+      },
+      "patterns": [
+        { "include": "#hol-term" }
+      ]
+    },
     "definition": {
       "begin": "^(Definition)\\s+([\\w_']*)(\\[([^\\]]*)\\])?(:)",
       "end": "^(Termination|End)",
@@ -239,6 +252,7 @@
     { "include": "#theorem-proof" },
     { "include": "#proof-qed" },
     { "include": "#definition" },
+    { "include": "#datatype" },
     { "include": "#inductive" },
     { "include": "#non-standard-ml" }
   ]
