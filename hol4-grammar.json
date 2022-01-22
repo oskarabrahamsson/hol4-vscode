@@ -55,41 +55,74 @@
     },
     "ml-operator": {
       "name": "keyword.operator.ml",
-      "match": "([<>=_+-/\\*]|=>|>=|<=|\\^|\\||:|:=|::|!|;)"
+      "match": "([<>=_\\+-/\\*]|=>|>=|<=|\\^|\\||:|:=|::|!|;)"
     },
 
-    "term-quote1": {
-      "begin": "`(?!`)",
-      "end": "(?<!`)`",
-      "name": "string.quoted.term.hol",
+    "term-quote-ticks": {
+      "match": "(?<!`)(`+)([^`]+)(\\1)(?!`)",
+      "captures": {
+        "1": { "name": "string.quoted.termquote.hol" },
+        "3": { "name": "string.quoted.termquote.hol" }
+      },
       "patterns": [
-        {
-          "include": "#hol-term"
-        },
-        {
-          "include": "#comments"
-        }
+        { "include": "#hol-term" }
       ]
     },
-    "term-quote2": {
-      "begin": "``(?!`)",
-      "end": "(?<!`)``",
-      "name": "string.quoted.term.hol",
+    "term-quote-unicode-single": {
+      "begin": "‘",
+      "end": "’",
+      "beginCaptures": {
+        "0": { "name": "string.quoted.termquote.hol" }
+      },
+      "endCaptures": {
+        "0": { "name": "string.quoted.termquote.hol" }
+      },
       "patterns": [
-        {
-          "include": "#hol-term"
-        },
-        {
-          "include": "#comments"
-        }
+        { "include": "#hol-term" }
       ]
     },
-
+    "term-quote-unicode-double": {
+      "begin": "“",
+      "end": "”",
+      "beginCaptures": {
+        "0": { "name": "string.quoted.termquote.hol" }
+      },
+      "endCaptures": {
+        "0": { "name": "string.quoted.termquote.hol" }
+      },
+      "patterns": [
+        { "include": "#hol-term" }
+      ]
+    },
+    "hol-quantifier": {
+      "match": "([\\!]|some)",
+      "captures": {
+        "0": "invalid"
+      }
+    },
+    "hol-connective": {
+      "match": "([=∧≠:<>⇒$\\+\\*-/]|/\\\\)",
+      "name": "invalid.operator.connective.hol"
+    },
+    "hol-special": {
+      "match": "\\b(UNIV|IMAGE|FST|SND|LENGTH|MAP)\\b",
+      "name": "entity.name.function.hol"
+    },
+    "hol-constructor": {
+      "match": "\\b(INL|INR|SOME|NONE)\\b",
+      "name": "entity.name.type.constructor.hol"
+    },
     "hol-term": {
-      "name": "invalid markup.italic",
-      "match": "[\\w∀∃∧⇒'.{}≠<>∪∈\\|≼]+"
+      "patterns": [
+        { "include": "#comments" },
+        { "include": "#ml-string"},
+        { "include": "#ml-char"},
+        { "include": "#hol-quantifier" },
+        { "include": "#hol-connective" },
+        { "include": "#hol-special" },
+        { "include": "#hol-constructor" }
+      ]
     },
-
     "definition": {
       "begin": "^(Definition)\\s+([\\w_']*)(\\[([^\\]]*)\\])?(:)",
       "end": "^(Termination|End)",
@@ -102,12 +135,7 @@
         "0": {"name": "keyword.other.def-end.hol"}
       },
       "patterns": [
-        {
-          "include": "#hol-term"
-        },
-        {
-          "include": "#comments"
-        }
+        { "include": "#hol-term" }
       ]
     },
     "theorem-assign": {
@@ -131,12 +159,7 @@
         "0": {"name": "keyword.other.proof.hol"}
       },
       "patterns": [
-        {
-          "include": "#hol-term"
-        },
-        {
-          "include": "#comments"
-        }
+        { "include": "#hol-term" }
       ]
     },
     "proof-qed":
@@ -148,12 +171,13 @@
       },
       "patterns": [
         { "include": "#tactical" },
+        { "include": "#comments" },
         { "include": "#cheat" },
-        { "include": "#term-quote1" },
-        { "include": "#term-quote2" }
+        { "include": "#term-quote-ticks" },
+        { "include": "#term-quote-unicode-single" },
+        { "include": "#term-quote-unicode-double" }
       ]
     },
-
     "tactical": {
       "name": "entity.name.tag.tactical.hol",
       "match": "(\\\\\\\\|THEN[1]?|>>|>-|>~)"
@@ -162,23 +186,22 @@
       "name": "invalid.tactic.cheat markup.underline",
       "match": "\\bcheat\\b"
     }
-
   },
   "patterns": [
-    { "include": "#comments"       },
-    { "include": "#ml-string"      },
-    { "include": "#ml-char"        },
-    { "include": "#number"         },
-    { "include": "#number-float"   },
-    { "include": "#ml-keyword"     },
-    { "include": "#ml-control"     },
-    { "include": "#ml-operator"    },
-
+    { "include": "#comments" },
+    { "include": "#ml-string" },
+    { "include": "#ml-char" },
+    { "include": "#number" },
+    { "include": "#number-float" },
+    { "include": "#ml-keyword" },
+    { "include": "#ml-control" },
+    { "include": "#ml-operator" },
     { "include": "#theorem-assign" },
-    { "include": "#theorem-proof"  },
-    { "include": "#proof-qed"      },
-    { "include": "#definition"     },
-    { "include": "#term-quote1"    },
-    { "include": "#term-quote2"    }
+    { "include": "#theorem-proof" },
+    { "include": "#proof-qed" },
+    { "include": "#definition" },
+    { "include": "#term-quote-ticks" },
+    { "include": "#term-quote-unicode-single" },
+    { "include": "#term-quote-unicode-double" }
   ]
 }
