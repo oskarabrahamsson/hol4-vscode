@@ -401,7 +401,7 @@ export function activate(context: vscode.ExtensionContext) {
                 return;
             }
 
-            let text = extractGoal(editor)?.replace('\n', ' ');
+            let text = extractGoal(editor);
             if (!text) {
                 vscode.window.showErrorMessage('Unable to select a goal term');
                 error('Unable to select goal term');
