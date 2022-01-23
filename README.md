@@ -22,3 +22,5 @@ N/A
   being sent to HOL. Currently, this does not properly deal with nested comments,
   or comment tokens that exist within string literals.
 - `load` calls are not inserted when calls to qualified ML code is made.
+- It's possible to find calls to `{Co}Inductive`, `Datatype`, `Theorem` etc. and
+  insert location pragmas.
