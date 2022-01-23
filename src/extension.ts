@@ -423,13 +423,13 @@ export function activate(context: vscode.ExtensionContext) {
             let tacticText = getSelection(editor);
             tacticText = processTactics(tacticText);
 
-            const locPragma = positionToLocationPragma(editor.selection.start);
+            const locPragma = positionToLocationPragma(editor.selection.anchor);
             const trace = '"show_typecheck_errors"';
             const data = [
-                'let val old = Feedback.current_trace ', trace, '\n',
+                'let val old = Feedback.current_trace ', trace,
                 '    val _ = Feedback.set_trace ', trace, ' 0 in (',
                 locPragma, ') before Feedback.set_trace ', trace, ' old end;',
-                `proofManagerLib.e(${tacticText});\n`
+                `proofManagerLib.e(${tacticText});`
             ].join('');
             holTerminal!.sendRaw(`${data};\n`);
         })
