@@ -404,7 +404,8 @@ export function activate(context: vscode.ExtensionContext) {
                 return;
             }
 
-            holTerminal!.sendRaw(`g(\`${text}\`);\n`);
+            holTerminal!.sendRaw(`proofManagerLib.g(\`${text}\`);\n`);
+            holTerminal!.sendRaw('proofManagerLib.set_backup 100;\n');
         })
     );
 
