@@ -240,13 +240,16 @@ function processTactics(text: string) {
  *
  * If you're between two goals or terms you will select a large chunk of
  * everything.
+ *
+ * @note this function embeds a location pragma in the string it returns.
  */
 function extractGoal(editor: vscode.TextEditor) {
     const selection = editor.selection;
     const document = editor.document;
 
     if (!selection.isEmpty) {
-        return document.getText(selection);
+        const locPragma = positionToLocationPragma(selection.anchor);
+        return [locPragma, document.getText(selection)].join('');
     }
 
     const findSelectionBetween = (init: RegExp, stop: RegExp) => {
@@ -284,8 +287,8 @@ function extractGoal(editor: vscode.TextEditor) {
         return new vscode.Selection(matchBegin + 1, 0, matchEnd, 0);
     };
 
-    const spanBegin = /^(Theorem|Triviality)\s+[^\[\:]+(\[[^\]]*\])?\s*\:\s*$/;
-    const spanEnd = /^Proof\s*$/;
+    const spanBegin = /^(Theorem|Triviality)\s+[^\[\:]+(\[[^\]]*\])?\s*\:/;
+    const spanEnd = /^Proof/;
 
     let sel;
     if ((sel = findSelectionBetween(spanBegin, spanEnd)) ||
@@ -293,7 +296,8 @@ function extractGoal(editor: vscode.TextEditor) {
         (sel = findSelectionBetween(/‘/, /’/)) ||
         (sel = findSelectionBetween(/``/, /``/)) ||
         (sel = findSelectionBetween(/`/, /`/))) {
-        return document.getText(sel);
+        const locPragma = positionToLocationPragma(sel.anchor);
+        return [locPragma, document.getText(sel)].join('');
     }
 
     return;
