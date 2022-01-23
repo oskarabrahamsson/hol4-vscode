@@ -116,6 +116,13 @@ function isInactive() {
 }
 
 /**
+ * Generate a HOL lexer location pragma from a vscode Position value.
+ */
+function positionToLocationPragma(pos: vscode.Position) {
+    return `(*#loc ${pos.line + 1} ${pos.character} *)`;
+}
+
+/**
  * Search forward in text and find the start- and end positions for the matched
  * text, and the content within the match (i.e. between the `start` and `stop`
  * match). If the `stop` regex is not matched, the end of the string counts as
@@ -408,10 +415,18 @@ export function activate(context: vscode.ExtensionContext) {
                 return;
             }
 
-            let text = getSelection(editor);
-            text = processTactics(text);
+            let tacticText = getSelection(editor);
+            tacticText = processTactics(tacticText);
 
-            holTerminal!.sendRaw(`e(${text});\n`);
+            const locPragma = positionToLocationPragma(editor.selection.start);
+            const trace = '"show_typecheck_errors"';
+            const data = [
+                'let val old = Feedback.current_trace ', trace, '\n',
+                '    val _ = Feedback.set_trace ', trace, ' 0 in (',
+                locPragma, ') before Feedback.set_trace ', trace, ' old end;',
+                `proofManagerLib.e(${tacticText});\n`
+            ].join('');
+            holTerminal!.sendRaw(`${data};\n`);
         })
     );
 
