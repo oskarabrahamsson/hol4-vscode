@@ -226,9 +226,9 @@ function processOpens(text: string) {
  * tacticals (plus possibly an opening parenthesis).
  */
 function processTactics(text: string) {
-    const tacticalBegin = /^(\\\\|>>|>-|THEN[1]?\s)/;
-    const tacticalEnd = /(\\\\|>>|>-|THEN[1]?\s&)\s*[\(]?$/;
-    return text.trim().replace(tacticalBegin, '').replace(tacticalEnd, '');
+    const tacticalBegin = /^(\\\\|>>|>-|\bTHEN[1]?\b)(\s)/;
+    const tacticalEnd = /(\\\\|>>|>-|\bTHEN[1]?\b)(\s*)[\(]?$/;
+    return text.trim().replace(tacticalBegin, '$2').replace(tacticalEnd, '$2');
 }
 
 /**
