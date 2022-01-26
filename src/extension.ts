@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import * as child_process from 'child_process';
 import * as path from 'path';
+import { ConsoleReporter } from '@vscode/test-electron';
 
 /**
  * This class wraps the Pseudoterminal interface with some functionality to
@@ -232,6 +233,59 @@ function processTactics(text: string) {
 }
 
 /**
+ * Select a chunk of text delimited by `init` and `stop` in the editor `editor`.
+ */
+function selectBetween(editor: vscode.TextEditor, init: RegExp, stop: RegExp) {
+    const selection = editor.selection;
+    const document = editor.document;
+    const currentLine = selection.active.line;
+
+    let startLine, startCol;
+
+    for (let i = currentLine; i >= 0; i--) {
+        const text = document.lineAt(i).text;
+        const match = init.exec(text);
+        if (match) {
+            startLine = i;
+            startCol = match.index + match[0].length;
+            break;
+        }
+    }
+
+    if (startLine === undefined || startCol === undefined) {
+        return;
+    }
+
+    let endLine, endCol;
+
+    for (let i = currentLine; i < document.lineCount; i++) {
+        let text = document.lineAt(i).text;
+        let offset = 0;
+
+        // If we're at the same line as the starting match, and if the `init`
+        // and `stop` regexes both match the same token, then we need to skip
+        // the init token, or we'll produce an empty range.
+        if (i === startLine) {
+            text = text.slice(startCol);
+            offset += startCol;
+        }
+
+        const match = stop.exec(text);
+        if (match) {
+            endLine = i;
+            endCol = match.index + offset;
+            break;
+        }
+    }
+
+    if (endLine === undefined || endCol === undefined) {
+        return;
+    }
+
+    return new vscode.Selection(startLine, startCol, endLine, endCol);
+};
+
+/**
  * Attempt to extract a goal from the current editor. Start by searching
  * forwards and backwards for a matching `{Theorem,Triviality}:-Proof` pair.
  * If this does not work, search for the nearest pair of double term quotes. If
@@ -252,50 +306,38 @@ function extractGoal(editor: vscode.TextEditor) {
         return [locPragma, document.getText(selection)].join('');
     }
 
-    const findSelectionBetween = (init: RegExp, stop: RegExp) => {
-        const currentLine = selection.active.line;
-
-        let matchBegin;
-        let matchEnd;
-
-        for (let i = currentLine; i >= 0; i--) {
-            const text = document.lineAt(i).text;
-            if (stop.test(text)) {
-                return;
-            }
-            if (init.test(text)) {
-                matchBegin = i;
-                break;
-            }
-        }
-
-        for (let i = currentLine; i < document.lineCount; i++) {
-            const text = document.lineAt(i).text;
-            if (init.test(text)) {
-                return;
-            }
-            if (stop.test(text)) {
-                matchEnd = i;
-                break;
-            }
-        }
-
-        if (!matchBegin || !matchEnd || matchEnd <= matchBegin) {
-            return;
-        }
-
-        return new vscode.Selection(matchBegin + 1, 0, matchEnd, 0);
-    };
-
     const spanBegin = /^(Theorem|Triviality)\s+[^\[\:]+(\[[^\]]*\])?\s*\:/;
     const spanEnd = /^Proof/;
 
     let sel;
-    if ((sel = findSelectionBetween(spanBegin, spanEnd)) ||
-        (sel = findSelectionBetween(/“/, /”/)) ||
-        (sel = findSelectionBetween(/‘/, /’/)) ||
-        (sel = findSelectionBetween(/``/, /``/)) ||
-        (sel = findSelectionBetween(/`/, /`/))) {
+    if ((sel = selectBetween(editor, spanBegin, spanEnd)) ||
+        (sel = selectBetween(editor, /“/, /”/)) ||
+        (sel = selectBetween(editor, /‘/, /’/)) ||
+        (sel = selectBetween(editor, /``/, /``/)) ||
+        (sel = selectBetween(editor, /`/, /`/))) {
+        const locPragma = positionToLocationPragma(sel.anchor);
+        return [locPragma, document.getText(sel)].join('');
+    }
+
+    return;
+}
+
+/**
+ * Identical to {@link extractGoal} but only accepts term quotations.
+ * @todo Merge with extractGoal.
+ */
+function extractSubgoal(editor: vscode.TextEditor) {
+    const selection = editor.selection;
+    const document = editor.document;
+
+    if (!selection.isEmpty) {
+        const locPragma = positionToLocationPragma(selection.anchor);
+        return [locPragma, document.getText(selection)].join('');
+    }
+
+    let sel;
+    if ((sel = selectBetween(editor, /‘/, /’/)) ||
+        (sel = selectBetween(editor, /`/, /`/))) {
         const locPragma = positionToLocationPragma(sel.anchor);
         return [locPragma, document.getText(sel)].join('');
     }
@@ -410,6 +452,24 @@ export function activate(context: vscode.ExtensionContext) {
 
             holTerminal!.sendRaw(`proofManagerLib.g(\`${text}\`);\n`);
             holTerminal!.sendRaw('proofManagerLib.set_backup 100;\n');
+        })
+    );
+
+    // Select a term quotation and set it up as a subgoal.
+    context.subscriptions.push(
+        vscode.commands.registerTextEditorCommand('hol4-mode.sendSubgoal', (editor) => {
+            if (isInactive()) {
+                return;
+            }
+
+            let text = extractSubgoal(editor);
+            if (!text) {
+                vscode.window.showErrorMessage('Unable to select a subgoal term');
+                error('Unable to select subgoal term');
+                return;
+            }
+
+            holTerminal!.sendRaw(`proofManagerLib.e(sg\`${text}\`);\n`);
         })
     );
 

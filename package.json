@@ -55,6 +55,10 @@
 				"title": "HOL: Send goal"
 			},
 			{
+				"command": "hol4-mode.sendSubgoal",
+				"title": "HOL: Send subgoal"
+			},
+			{
 				"command": "hol4-mode.sendTactic",
 				"title": "HOL: Send tactic"
 			},
@@ -112,6 +116,12 @@
 				"command": "hol4-mode.sendGoal",
 				"key": "ctrl+h g",
 				"mac": "cmd+h g",
+				"when": "editorLangId == hol4"
+			},
+			{
+				"command": "hol4-mode.sendSubgoal",
+				"key": "ctrl+h shift+s",
+				"mac": "cmd+h shift+s",
 				"when": "editorLangId == hol4"
 			},
 			{
