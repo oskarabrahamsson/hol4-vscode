@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as child_process from 'child_process';
 import * as path from 'path';
-import { ConsoleReporter } from '@vscode/test-electron';
+import * as fs from 'fs';
 
 /**
  * This class wraps the Pseudoterminal interface with some functionality to
@@ -565,41 +565,18 @@ export function activate(context: vscode.ExtensionContext) {
     );
 
     // Unicode completions.
-    /* eslint-disable @typescript-eslint/naming-convention */
-    let completions: { [key: string] : string } = {
-        "`": "‘’",
-        "``": "“”",
-        "<<": "«",
-        ">>": "»",
-        "!": "∀",
-        "forall": "∀",
-        "?": "∃",
-        "exists": "∃",
-        "\\": "λ",
-        "lambda": "λ",
-        "\\/": "∨",
-        "or": "∨",
-        "/\\": "∧",
-        "and": "∧",
-        "~": "¬",
-        "not": "¬",
-        "union": "∪",
-        "UNION": "∪",
-        "in": "∈",
-        "IN": "∈",
-        "notin": "∉",
-        "NOTIN": "∉",
-        "subset": "⊆",
-        "SUBSET": "⊆",
-        "psubset": "⊂",
-        "PSUBSET": "⊂",
-        "==>": "⇒",
-        "implies": "⇒",
-        "<=": "≤",
-        ">=": "≥",
-        "<=>": "⇔",
-        "<>": "≠",
-    };
+    let unicodeCompletionsFilepath = context.asAbsolutePath('unicode-completions.json');
+    let completions: { [key: string] : string } = {};
+
+    log('Loading unicode completions.');
+    fs.readFile(unicodeCompletionsFilepath, (err, data) => {
+        if (err) {
+            error(`Unable to read unicode completions file: ${err}`);
+            vscode.window.showErrorMessage('Unable to load unicode completions.');
+        }
+
+        completions = JSON.parse(data.toString());
+    });
 
     const unicodeCompletionProvider: vscode.CompletionItemProvider = {
         async provideCompletionItems(document, position, token, context) {
