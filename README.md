@@ -21,6 +21,11 @@ N/A
 - There is some hacky code that attempts to strip ML comments from input that is
   being sent to HOL. Currently, this does not properly deal with nested comments,
   or comment tokens that exist within string literals.
+- Comments are not stripped from tactic text.
 - `load` calls are not inserted when calls to qualified ML code is made.
-- It's possible to find calls to `{Co}Inductive`, `Datatype`, `Theorem` etc. and
-  insert location pragmas.
+- Location pragmas are not inserted at calls to `{Co}Inductive`, `Datatype`,
+  `Theorem`, nor in term quotations.
+- There's no command for toggling whether types are printed or not; use
+  `show_types := {true, false}` in the meantime.
+- The pseudoterminal used for the REPL doesn't deal with special inputs
+  properly; `^C` and `^D` are ignored, for instance.
