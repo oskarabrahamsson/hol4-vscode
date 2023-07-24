@@ -27,5 +27,3 @@ N/A
   `Theorem`, nor in term quotations.
 - There's no command for toggling whether types are printed or not; use
   `show_types := {true, false}` in the meantime.
-- The pseudoterminal used for the REPL doesn't deal with special inputs
-  properly; `^C` and `^D` are ignored, for instance.
