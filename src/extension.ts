@@ -42,6 +42,7 @@ class HolTerminal implements vscode.Pseudoterminal {
 
     open(_initialDimensions: vscode.TerminalDimensions | undefined) {
         this.child = child_process.spawn(path.join(holPath!, 'bin', 'hol'), {
+            env: {...process.env, ...{'TERM': 'xterm'}},
             cwd: this.cwd,
             detached: true,
         });
