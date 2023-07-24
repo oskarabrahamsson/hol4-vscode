@@ -41,20 +41,23 @@ class HolTerminal implements vscode.Pseudoterminal {
     onDidClose = this.closeEmitter.event;
 
     open(_initialDimensions: vscode.TerminalDimensions | undefined) {
-        this.child = child_process.exec(
-            path.join(holPath!, 'bin', 'hol'),
-            {cwd: this.cwd});
-        this.child.stdout?.on('data', (data: string) => {
-            this.writeEmitter.fire(this.fixLineBreak(data));
+        this.child = child_process.spawn(path.join(holPath!, 'bin', 'hol'), {
+            cwd: this.cwd,
+            detached: true,
         });
-        this.child.stderr?.on('data', (data: string) => {
-            const isLineBreak = /(\r[^\n]|\n[^\r])/gi;
-            this.writeEmitter.fire(this.fixLineBreak(data));
+        this.child.stdout?.on('data', (data: Buffer) => {
+            this.writeEmitter.fire(this.fixLineBreak(data.toString()));
+        });
+        this.child.stderr?.on('data', (data: Buffer) => {
+            console.log(data);
+            this.writeEmitter.fire(this.fixLineBreak(data.toString()));
         });
     }
 
     close() {
-        this.child?.kill();
+        if (this.child?.pid) {
+            process.kill(-this.child.pid, 'SIGTERM');
+        }
     }
 
     setDimensions(_dimensions: vscode.TerminalDimensions) {}
@@ -72,6 +75,11 @@ class HolTerminal implements vscode.Pseudoterminal {
                 this.child?.stdin?.write(this.buffer.join(''));
                 this.child?.stdin?.write('\r\n');
                 this.buffer = [];
+            } else if (data[0].charCodeAt(0) === 3) {
+                // Ctrl-C: send INT to process group.
+                if (this.child?.pid) {
+                    process.kill(-this.child.pid, 'SIGINT');
+                }
             } else {
                 this.buffer.push(data[0]);
             }
