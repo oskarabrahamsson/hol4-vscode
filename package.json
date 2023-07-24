@@ -5,14 +5,13 @@
 	"version": "0.0.6",
 	"repository": "https://github.com/oskarabrahamsson/hol4-vscode",
 	"engines": {
-		"vscode": "^1.63.0"
+		"vscode": "^1.75.0"
 	},
 	"publisher": "oskarabrahamsson",
 	"categories": [
 		"Programming Languages"
 	],
 	"activationEvents": [
-		"onLanguage:hol4",
 		"onLanguage:sml"
 	],
 	"main": "./out/extension.js",
