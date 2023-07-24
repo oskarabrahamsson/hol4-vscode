@@ -40,14 +40,14 @@ class HolTerminal implements vscode.Pseudoterminal {
     onDidWrite = this.writeEmitter.event;
     onDidClose = this.closeEmitter.event;
 
-    open(initialDimensions: vscode.TerminalDimensions | undefined) {
+    open(_initialDimensions: vscode.TerminalDimensions | undefined) {
         this.child = child_process.exec(
             path.join(holPath!, 'bin', 'hol'),
             {cwd: this.cwd});
-        this.child.stdout?.on('data', (data) => {
+        this.child.stdout?.on('data', (data: string) => {
             this.writeEmitter.fire(this.fixLineBreak(data));
         });
-        this.child.stderr?.on('data', (data) => {
+        this.child.stderr?.on('data', (data: string) => {
             const isLineBreak = /(\r[^\n]|\n[^\r])/gi;
             this.writeEmitter.fire(this.fixLineBreak(data));
         });
@@ -57,7 +57,7 @@ class HolTerminal implements vscode.Pseudoterminal {
         this.child?.kill();
     }
 
-    setDimensions(dimensions: vscode.TerminalDimensions) {}
+    setDimensions(_dimensions: vscode.TerminalDimensions) {}
 
     handleInput(data: string) {
         if (this.userInput) {
@@ -579,7 +579,7 @@ export function activate(context: vscode.ExtensionContext) {
     });
 
     const unicodeCompletionProvider: vscode.CompletionItemProvider = {
-        async provideCompletionItems(document, position, token, context) {
+        async provideCompletionItems(_document, position, _token, context) {
             let items = [];
             let range = new vscode.Range(position.translate(0, -1), position);
             for (const matchKey in completions) {
