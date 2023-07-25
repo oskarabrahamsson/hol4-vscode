@@ -440,13 +440,19 @@ export function dropGoal(holExtensionContext: HOLExtensionContext): void {
     holExtensionContext.holTerminal!.sendRaw('proofManagerLib.drop();\n');
 }
 
-/** Set show_types := ${show} */
-export function setShowTypes(holExtensionContext: HOLExtensionContext, show: boolean): void {
+/** Toggle printing of terms with or without types */
+export function toggleShowTypes(holExtensionContext: HOLExtensionContext): void {
     if (isInactive(holExtensionContext)) {
         return;
     }
 
-    holExtensionContext.holTerminal?.sendRaw(`show_types := ${show};\n`);
+    holExtensionContext.holTerminal!.sendRaw('Globals.show_types:=not(!Globals.show_types);\n');
 }
 
+export function toggleShowAssums(holExtensionContext: HOLExtensionContext) {
+    if (isInactive(holExtensionContext)) {
+        return;
+    }
+    holExtensionContext.holTerminal!.sendRaw('Globals.show_assums:=not(!Globals.show_assums);\n');
+}
 

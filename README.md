@@ -12,7 +12,84 @@ repository [here](https://github.com/HOL-Theorem-Prover/HOL).
 
 ## Extension Settings
 
-N/A
+Suggested additions to `settings.json` for use with [VSCodeVim](https://github.com/VSCodeVim/Vim),
+somewhat corresponding to the HOL4 Vim mode defaults:
+```json
+{
+    "vim.visualModeKeyBindings": [
+      {
+        "before": [ "<leader>", "e" ],
+        "commands": [ "hol4-mode.sendTactic" ]
+      },
+      {
+        "before": [ "<leader>", "s" ],
+        "commands": [ "hol4-mode.sendSelection" ]
+      },
+    ],
+    "vim.normalModeKeyBindings": [
+      {
+        "before": [ "<leader>", "h" ],
+        "commands": [ "hol4-mode.startSession" ]
+      },
+      {
+        "before": [ "<leader>", "<leader>", "x" ],
+        "commands": [ "hol4-mode.stopSession" ]
+      },
+      {
+        "before": [ "<leader>", "s" ],
+        "commands": [ "hol4-mode.sendSelection" ]
+      },
+      {
+        "before": [ "<leader>", "<leader>", "s" ],
+        "commands": [ "hol4-mode.sendUntilCursor" ]
+      },
+      {
+        "before": [ "<leader>", "g" ],
+        "commands": [ "hol4-mode.sendGoal" ]
+      },
+      {
+        "before": [ "<leader>", "S" ],
+        "commands": [ "hol4-mode.sendSubgoal" ]
+      },
+      {
+        "before": [ "<leader>", "e" ],
+        "commands": [ "hol4-mode.sendTactic" ]
+      },
+      {
+        "before": [ "<leader>", "p" ],
+        "commands": [ "hol4-mode.proofmanShow" ]
+      },
+      {
+        "before": [ "<leader>", "b" ],
+        "commands": [ "hol4-mode.proofmanBack" ]
+      },
+      {
+        "before": [ "<leader>", "R" ],
+        "commands": [ "hol4-mode.proofmanRestart" ]
+      },
+      {
+        "before": [ "<leader>", "r" ],
+        "commands": [ "hol4-mode.proofmanRotate" ]
+      },
+      {
+        "before": [ "<leader>", "d" ],
+        "commands": [ "hol4-mode.proofmanDrop" ]
+      },
+      {
+        "before": [ "<leader>", "y" ],
+        "commands": [ "hol4-mode.toggleShowTypes" ]
+      },
+      {
+        "before": [ "<leader>", "a" ],
+        "commands": [ "hol4-mode.toggleShowAssums" ]
+      },
+      {
+        "before": [ "<leader>", "c" ],
+        "commands": [ "hol4-mode.interrupt" ]
+      }
+    ]
+}
+```
 
 ## Known Issues
 

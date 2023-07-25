@@ -1,0 +1,31 @@
+Emacs:      VSCode:      VScode VIM:         Description:
+----------------------------------------------------------
+M-h h       C-h h   /    <Leader> h          Start HOL session
+M-h C-a     C-h C-a /    <Leader> a          Toggle show_assums
+M-h C-c     C-h C-c      <Leader> c          Send interrupt
+M-h C-f     C-h C-f      <Leader> f          Toggle goalstack display of free variables (?)
+M-h C-l                                      Recentre (?) [x]
+M-h C-o                                      Toggle goalstack display goal at bottom [x]
+M-h C-v                                      Scroll HOL window up [x]
+M-h C-t     C-h C-t      <Leader> t          Toggle show_types
+M-h M-a                                      Toggle number of assumptions [x]
+M-h M-b                                      Move cursor backwards over tactic
+M-h M-f                                      Move cursor forwards over tactic
+M-h M-r                                      Send region [like C-h s?]
+M-h M-s     C-h C-s /    <Leader> S          Sends term at cursor as subgoal
+M-h M-v                                      Scroll HOL window down [x]
+M-h b       C-h b   /    <Leader> ...        Back one step in goal manager
+M-h d       C-h d   /      (for all below)   Drop goal
+M-h D                                        Drop all goals
+M-h e       C-h e   /                        Send region as tactic
+M-h g       C-h g   /                        Set current goal
+M-h l                                        Load selection or word under cursor as library (load "foo") [x]
+M-h m       C-h m                            Search theorem database (prompts for word)
+M-h n                                        Top theorem naming [x]
+M-h o                                        Open string [x]
+M-h p       C-h p   /                        Print top of goalstack
+M-h r       C-h r   /                        Rotate goalstack
+M-h R       C-h R   /                        Restart goal
+M-h s       C-h s   /                        Send string to HOL
+M-h t                                        Mark tactic [x]
+M-h u                                        Use file (use "foo") [x]

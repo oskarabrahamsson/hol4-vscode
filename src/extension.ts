@@ -138,14 +138,14 @@ export function activate(context: vscode.ExtensionContext) {
             holcommands.dropGoal(holExtensionContext);
         }),
 
-        // Set show_types := true
-        vscode.commands.registerCommand('hol4-mode.showTypesTrue', () => {
-            holcommands.setShowTypes(holExtensionContext, true);
+        // Toggle printing of terms with or without types
+        vscode.commands.registerCommand('hol4-mode.toggleShowTypes', () => {
+            holcommands.toggleShowTypes(holExtensionContext);
         }),
 
-        // Set show_types := false
-        vscode.commands.registerCommand('hol4-mode.showTypesFalse', () => {
-            holcommands.setShowTypes(holExtensionContext, true);
+        // Toggle printing of theorem assumptions
+        vscode.commands.registerCommand('hol4-mode.toggleShowAssums', () => {
+            holcommands.toggleShowAssums(holExtensionContext);
         }),
 
         // Run Holmake in current directory
