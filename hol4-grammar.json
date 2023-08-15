@@ -113,7 +113,7 @@
       "name": "entity.name.function.hol"
     },
     "hol-keywords": {
-      "match": "\\b(case|of|if|then|else)\\b",
+      "match": "\\b(case|of|if|then|else|let|in)\\b",
       "name": "keyword.control.hol"
     },
     "hol-constructor": {
@@ -191,6 +191,16 @@
         { "include": "#hol-term" }
       ]
     },
+    "termination": {
+      "begin": "(?<=^Termination)",
+      "end": "^End",
+      "endCaptures": {
+        "0": {"name": "keyword.other.qed.hol"}
+      },
+      "patterns": [
+        { "include": "#non-standard-ml" }
+      ]
+    },
     "inductive": {
       "begin": "^((?:Co)?Inductive)\\s+([\\w_']*)(:)",
       "end": "^End",
@@ -214,8 +224,7 @@
         "4": {"name": "entity.name.tag.attribute.hol"}
       }
     },
-    "theorem-proof":
-    {
+    "theorem-proof": {
       "begin": "^(Theorem|Triviality)\\s+([\\w_']*)(\\[([^\\]]*)\\])?(:)",
       "end": "^Proof",
       "beginCaptures": {
@@ -230,8 +239,7 @@
         { "include": "#hol-term" }
       ]
     },
-    "proof-qed":
-    {
+    "proof-qed": {
       "begin": "(?<=^Proof)",
       "end": "^QED",
       "endCaptures": {
@@ -247,7 +255,7 @@
     },
     "tactics": {
       "name": "support.function.tactic.ml",
-      "match": "\\b(ho_match_mp_tac|((asm|full)_)?simp(_tac)?|rw|fs|rfs|gs|gvs|gns|imp_res_tac|rpt|Cases|Cases_on|Induct|Induct_on|recInduct|pop_assum|mp_tac|drule(_(then|at|at_then))?|irule(_at)?|mp_then|strip_tac|(strip_)?assume_tac|disch_then|disch_tac|qx_choose_then|(qx_)?gen_tac|rewrite_tac|wf_rel_tac|(PURE_)?(TOP_)?CASE_TAC|CONV_TAC)\\b"
+      "match": "\\b(ho_match_mp_tac|((asm|full)_)?simp(_tac)?|rw|fs|rfs|gs|gvs|sg|gns|imp_res_tac|res_tac|metis_tac|rpt|Cases|Cases_on|Induct|Induct_on|recInduct|pop_assum|mp_tac|drule(_(then|at|at_then))?|irule(_at)?|mp_then|strip_tac|(strip_)?assume_tac|disch_then|disch_tac|qx_choose_then|(qx_)?gen_tac|rewrite_tac|wf_rel_tac|(PURE_)?(TOP_)?CASE_TAC|CONV_TAC)\\b"
     },
     "cheat": {
       "name": "invalid.tactic.cheat markup.underline",
@@ -259,6 +267,7 @@
     { "include": "#theorem-proof" },
     { "include": "#proof-qed" },
     { "include": "#definition" },
+    { "include": "#termination" },
     { "include": "#datatype" },
     { "include": "#inductive" },
     { "include": "#non-standard-ml" }

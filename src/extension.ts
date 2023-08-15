@@ -61,6 +61,12 @@ class HolTerminal implements vscode.Pseudoterminal {
         }
     }
 
+    interrupt() {
+        if (this.child?.pid) {
+            process.kill(-this.child.pid, 'SIGINT');
+        }
+    }
+
     setDimensions(_dimensions: vscode.TerminalDimensions) {}
 
     handleInput(data: string) {
@@ -78,9 +84,7 @@ class HolTerminal implements vscode.Pseudoterminal {
                 this.buffer = [];
             } else if (data[0].charCodeAt(0) === 3) {
                 // Ctrl-C: send INT to process group.
-                if (this.child?.pid) {
-                    process.kill(-this.child.pid, 'SIGINT');
-                }
+                this.interrupt();
             } else {
                 this.buffer.push(data[0]);
             }
@@ -89,6 +93,163 @@ class HolTerminal implements vscode.Pseudoterminal {
 
         this.child!.stdin?.write(data);
     };
+}
+
+/** Theorem structure for go to definition and hover info */
+interface HOLEntry {
+    name: string;
+    statement: string;
+    file: string;
+    line: number;
+    type: 'Theorem' | 'Definition' | 'Inductive';
+}
+
+function holEntryToSymbol(entry: HOLEntry) : HOLSymbolInformation {
+    const symbol: HOLSymbolInformation = {
+        name: entry.name,
+        kind: vscode.SymbolKind.Function,
+        location: new vscode.Location(vscode.Uri.file(entry.file), new vscode.Position(entry.line - 1, 0)),
+        containerName: ''
+    };
+    return symbol;
+}
+
+/** Removes comments from the contents of a HOL4 file */
+function removeComments(contents: string): string {
+    const commentRegex = /\(\*[\s\S]*?\*\)/g;
+    return contents.replace(commentRegex, (match: string) => {
+        const numNewlines = match.split(/\r\n|\n|\r/).length - 1;
+        const newlines = '\n'.repeat(numNewlines);
+        return newlines;
+    });
+}
+
+/** Poor man's parsing of HOL4 files */
+export function parseScriptSML(_contents: string): HOLEntry[] {
+    const contents = removeComments(_contents);
+    const theoremRegex = /Theorem\s+(\S+?)\s*:\s+([\s\S]*?)\sProof\s+([\s\S]*?)\sQED/mg;
+    const definitionRegex = /Definition\s+(\S+?)\s*:\s+([\s\S]*?)\sEnd/mg;
+    const inductiveRegex = /Inductive\s+(\S+?)\s*:\s+([\s\S]*?)\sEnd/mg;
+    const afterIdentifierThingRegex = /\[\S*?\]/mg;
+    const identifierRegex = /([_a-zA-Z][_a-zA-Z0-9]*)/mg;
+    const definitionStatementTerminationRegex = /([\s\S]*?)Termination\s+([\s\S]*?)\s/;
+    // TODO(kπ): check save_thm syntax, since it's a bit different from store_thm
+    const savethmSMLSyntax = /val\s+(\S*)\s*=\s*(?:Q\.)?store_thm\s*\([^,]+,\s+\(?(?:“|`|``)([^”`]*)(?:”|`|``)\)?\s*,[^;]+?;/mg;
+    const storethmSMLSyntax = /val\s+(\S*)\s*=\s*(?:Q\.)?store_thm\s*\([^,]+,\s+\(?(?:“|`|``)([^”`]*)(?:”|`|``)\)?\s*,[^;]+?;/mg;
+    const holentries: HOLEntry[] = [];
+    let match: RegExpExecArray | null;
+    while ((match = theoremRegex.exec(contents))) {
+        const theorem: HOLEntry = {
+            name: match[1].replace(afterIdentifierThingRegex, ''),
+            statement: match[2],
+            line: contents.slice(0, match.index).split('\n').length,
+            file: '',
+            type: 'Theorem'
+        };
+        holentries.push(theorem);
+    }
+    while ((match = definitionRegex.exec(contents))) {
+        let statement: RegExpExecArray | null;
+        if(match[2].includes("Termination") && (statement = definitionStatementTerminationRegex.exec(match[2]))) {
+            const definition: HOLEntry = {
+                name: match[1].replace(afterIdentifierThingRegex, ''),
+                statement: statement[1],
+                line: contents.slice(0, match.index).split('\n').length,
+                file: '',
+                type: 'Definition'
+            };
+            holentries.push(definition);
+        } else {
+            const definition: HOLEntry = {
+                name: match[1].replace(afterIdentifierThingRegex, ''),
+                statement: match[2],
+                line: contents.slice(0, match.index).split('\n').length,
+                file: '',
+                type: 'Definition'
+            };
+            holentries.push(definition);
+        }
+    }
+    while ((match = storethmSMLSyntax.exec(contents))) {
+        const theorem: HOLEntry = {
+            name: match[1].replace(afterIdentifierThingRegex, ''),
+            statement: match[2],
+            line: contents.slice(0, match.index).split('\n').length,
+            file: '',
+            type: 'Theorem'
+        };
+        holentries.push(theorem);
+    }
+    while ((match = inductiveRegex.exec(contents))) {
+        const theorem: HOLEntry = {
+            name: match[1].replace(afterIdentifierThingRegex, '') + '_def',
+            statement: match[2],
+            line: contents.slice(0, match.index).split('\n').length,
+            file: '',
+            type: 'Inductive'
+        };
+        holentries.push(theorem);
+    }
+    return holentries;
+}
+
+function parseSig(_contents: string): HOLEntry[] {
+    const holentries: HOLEntry[] = [];
+
+    return holentries;
+}
+
+/** Returns all files ending in "Script.sml" from the current directory (or any nested directory) */
+function findExtFiles(directory: string, ext: string): string[] {
+    const smlFiles: string[] = [];
+    fs.readdirSync(directory, { withFileTypes: true }).forEach((entry) => {
+        const filePath = path.join(directory, entry.name);
+        if (entry.isDirectory() && !entry.name.startsWith('.') && !entry.name.startsWith('examples')) {
+            smlFiles.push(...findExtFiles(filePath, ext));
+        } else if (entry.isFile() && entry.name.endsWith(ext)) {
+            smlFiles.push(filePath);
+        }
+    });
+    return smlFiles;
+}
+
+/** Creates a completion item from an entry */
+function createCompletionItem(entry: HOLEntry, kind: vscode.CompletionItemKind): vscode.CompletionItem {
+    const item = new vscode.CompletionItem(entry.name, kind);
+    item.commitCharacters = [' '];
+    item.documentation = `${entry.type}: ${entry.name}\n${entry.statement}`;
+    return item;
+}
+
+/** Used for the Document Symbol Provider for HOL */
+interface HOLSymbolInformation extends vscode.SymbolInformation {
+  kind: vscode.SymbolKind;
+}
+
+/** Returns the imported theories in the given file */
+function getImports(document: vscode.TextDocument): string[] {
+    const imports: string[] = [];
+    const importRegex = /^\s*open\s+([^;]+(\s+[^;]+)*?);/mg;
+    const text = document.getText();
+    const contents = removeComments(text);
+    let match: RegExpExecArray | null;
+    while ((match = importRegex.exec(contents))) {
+        const names = match[1].split(/\s+/);
+        names.forEach((name) => {
+            const n = name.match(/(\S+)Theory/);
+            if (n) {
+                imports.push(n[1] + 'Script.sml');
+            } else {
+                imports.push(name);
+            }
+        });
+    }
+    return imports;
+}
+
+/** Check whether the entry should be accessible for the given parameters */
+function isAccessibleEntry(entry: HOLEntry, imports: string[], document: vscode.TextDocument): boolean {
+    return imports.some((imp) => entry.file.includes(imp)) || entry.file.includes(document.fileName);
 }
 
 /** Path to the HOL installation to use. */
@@ -412,6 +573,18 @@ export function activate(context: vscode.ExtensionContext) {
         })
     );
 
+    // Interrupt the current session, if any.
+    context.subscriptions.push(
+        vscode.commands.registerCommand('hol4-mode.interrupt', () => {
+            if (isInactive()) {
+                return;
+            }
+
+            log('Interrupted session');
+            holTerminal?.interrupt();
+        })
+    );
+
     // Send selection to the terminal; preprocess to find `open` and `load`
     // calls.
     context.subscriptions.push(
@@ -504,6 +677,28 @@ export function activate(context: vscode.ExtensionContext) {
         })
     );
 
+    // Send a tactic line to the terminal.
+    context.subscriptions.push(
+        vscode.commands.registerTextEditorCommand('hol4-mode.sendTacticLine', (editor) => {
+            if (isInactive()) {
+                return;
+            }
+
+            let tacticText = editor.document.lineAt(editor.selection.active.line).text;
+            tacticText = processTactics(tacticText);
+
+            const locPragma = positionToLocationPragma(editor.selection.anchor);
+            const trace = '"show_typecheck_errors"';
+            const data = [
+                'let val old = Feedback.current_trace ', trace,
+                '    val _ = Feedback.set_trace ', trace, ' 0 in (',
+                locPragma, ') before Feedback.set_trace ', trace, ' old end;',
+                `proofManagerLib.e(${tacticText});`
+            ].join('');
+            holTerminal!.sendRaw(`${data};\n`);
+        })
+    );
+
     // Show goal.
     context.subscriptions.push(
         vscode.commands.registerCommand('hol4-mode.proofmanShow', () => {
@@ -559,6 +754,20 @@ export function activate(context: vscode.ExtensionContext) {
         })
     );
 
+    // Set show_types := true
+    context.subscriptions.push(
+        vscode.commands.registerTextEditorCommand('hol4-mode.showTypesTrue', (editor) => {
+            holTerminal?.sendRaw(`show_types := true;\n`);
+        })
+    );
+
+    // Set show_types := false
+    context.subscriptions.push(
+        vscode.commands.registerTextEditorCommand('hol4-mode.showTypesFalse', (editor) => {
+            holTerminal?.sendRaw(`show_types := false;\n`);
+        })
+    );
+
     // Run Holmake in current directory
     context.subscriptions.push(
         vscode.commands.registerTextEditorCommand('hol4-mode.holmake', (editor) => {
@@ -611,6 +820,181 @@ export function activate(context: vscode.ExtensionContext) {
     };
     let triggers= ['\\'];
     vscode.languages.registerCompletionItemProvider(selector, unicodeCompletionProvider, ...triggers);
+
+    vscode.languages.registerCompletionItemProvider(selector, {
+        provideCompletionItems(document: vscode.TextDocument, position: vscode.Position, token: vscode.CancellationToken, context: vscode.CompletionContext): vscode.ProviderResult<vscode.CompletionItem[]> {
+            const wordRange = document.getWordRangeAtPosition(position);
+            if (!wordRange) {
+                return [];
+            }
+            const word = document.getText(wordRange);
+            const completions: vscode.CompletionItem[] = [];
+            const matcher = new RegExp(word, 'i');
+            allEntries().forEach((entry) => {
+                if (matcher.test(entry.name) && isAccessibleEntry(entry, imports, document)) {
+                    const item = createCompletionItem(entry, vscode.CompletionItemKind.Function);
+                    completions.push(item);
+                }
+            });
+            return completions;
+        }
+    });
+
+    const workspacePath = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
+    const outputDir = path.join(workspacePath!, '.holls');
+    if (!fs.existsSync(outputDir)) {
+        fs.mkdirSync(outputDir);
+    }
+    const outputFile = path.join(outputDir, 'entries.json');
+    let cachedEntries: HOLEntry[] = [];
+    let dependencyEntries: HOLEntry[] = [];
+    try {
+        cachedEntries = JSON.parse(fs.readFileSync(outputFile, 'utf-8'));
+    } catch (error) {}
+    let dependencyVariables: string[] = ['HOLDIR','CAKEMLDIR'];
+    console.log(process.env);
+    dependencyVariables.forEach((variable) => {
+        let depPath: string | undefined = process.env[variable];
+        console.log(variable);
+        console.log(depPath);
+        if (depPath) {
+            const depholls = path.join(depPath, '.holls', 'entries.json');
+            console.log(depholls);
+            try {
+                dependencyEntries = dependencyEntries.concat(JSON.parse(fs.readFileSync(depholls, 'utf-8')));
+            } catch (error) {}
+        }
+    });
+    vscode.window.showInformationMessage(`HOL: Read ${cachedEntries.length} entries from workspace cache and ${dependencyEntries.length} entries from HOLDIR cache!`);
+
+    function allEntries(): HOLEntry[] {
+        return cachedEntries.concat(dependencyEntries);
+    };
+
+    var imports: string[] = [];
+    var editor = vscode.window.activeTextEditor;
+    if (editor) {
+        imports = getImports(editor.document);
+    }
+
+    context.subscriptions.push(
+        vscode.window.onDidChangeActiveTextEditor((editor) => {
+            if (editor) {
+                imports = getImports(editor.document);
+            }
+        })
+    );
+
+    function indexWorkspace(document?: vscode.TextDocument) {
+        const workspacePath = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
+        if (!workspacePath) {
+            vscode.window.showErrorMessage('No workspace open!');
+            return;
+        }
+        let smlFiles: string[] = [];
+        if (document) {
+            const path = document.uri.fsPath;
+            if (path.endsWith('Script.sml')) {
+                smlFiles.push(path);
+            }
+        } else {
+            smlFiles = findExtFiles(workspacePath, 'Script.sml');
+        }
+        const entries: HOLEntry[] = [];
+        smlFiles.forEach((filePath) => {
+            const contents = fs.readFileSync(filePath, 'utf-8');
+            const parsed = parseScriptSML(contents);
+            parsed.forEach((entry) => {
+                entries.push({
+                    name: entry.name,
+                    statement: entry.statement,
+                    file: filePath,
+                    line: entry.line,
+                    type: entry.type
+                });
+            });
+        });
+        const outputDir = path.join(workspacePath, '.holls');
+        if (!fs.existsSync(outputDir)) {
+            fs.mkdirSync(outputDir);
+        }
+        const outputFile = path.join(outputDir, 'entries.json');
+        if (!document) {
+            vscode.window.showInformationMessage(`HOL: Parsed ${entries.length} entries!`);
+        }
+        cachedEntries = cachedEntries.filter((entry) => !smlFiles.includes(entry.file));
+        cachedEntries = cachedEntries.concat(entries);
+        fs.writeFileSync(outputFile, JSON.stringify(cachedEntries, null, 2));
+    }
+
+    context.subscriptions.push(
+        vscode.workspace.onDidSaveTextDocument((document) => {
+            indexWorkspace(document);
+        })
+    );
+
+    context.subscriptions.push(
+        vscode.commands.registerCommand('hol4-mode.indexWorkspace', () => {
+            indexWorkspace();
+        })
+    );
+
+    context.subscriptions.push(
+        vscode.languages.registerHoverProvider(selector, {
+            provideHover(document: vscode.TextDocument, position: vscode.Position, token: vscode.CancellationToken) {
+                const wordRange = document.getWordRangeAtPosition(position);
+                const word = document.getText(wordRange);
+                const entry = allEntries().find((entry) => entry.name === word && isAccessibleEntry(entry, imports, document));
+                if (entry) {
+                    const markdownString = new vscode.MarkdownString();
+                    markdownString.appendMarkdown(`**${entry.type}:** ${entry.name}\n\n`);
+                    markdownString.appendCodeblock(entry.statement);
+                    return new vscode.Hover(markdownString, wordRange);
+                }
+            }
+        })
+    );
+
+    context.subscriptions.push(
+        vscode.languages.registerDefinitionProvider(selector, {
+            provideDefinition(document: vscode.TextDocument, position: vscode.Position, token: vscode.CancellationToken) {
+                const wordRange = document.getWordRangeAtPosition(position);
+                const word = document.getText(wordRange);
+                const entry = allEntries().find((entry) => entry.name === word && isAccessibleEntry(entry, imports, document));
+                if (entry) {
+                    const position = new vscode.Position(entry.line! - 1, 0);
+                    return new vscode.Location(vscode.Uri.file(entry.file!), position);
+                }
+            }
+        })
+    );
+
+    context.subscriptions.push(
+        vscode.languages.registerDocumentSymbolProvider(selector, {
+            provideDocumentSymbols(document: vscode.TextDocument, token: vscode.CancellationToken): vscode.ProviderResult<HOLSymbolInformation[]> {
+                const symbols: HOLSymbolInformation[] = [];
+                cachedEntries.filter((entry) => entry.file === document.uri.path).forEach((entry) => {
+                    symbols.push(holEntryToSymbol(entry));
+                });
+                return symbols;
+            }
+        })
+    );
+
+    context.subscriptions.push(
+        vscode.languages.registerWorkspaceSymbolProvider({
+            provideWorkspaceSymbols(query: string, token: vscode.CancellationToken): vscode.ProviderResult<HOLSymbolInformation[]> {
+                const symbols: HOLSymbolInformation[] = [];
+                const matcher = new RegExp(query, 'i');
+                allEntries().forEach((entry) => {
+                    if (matcher.test(entry.name)) {
+                        symbols.push(holEntryToSymbol(entry));
+                    }
+                });
+                return symbols;
+            }
+        })
+    );
 
 }
 

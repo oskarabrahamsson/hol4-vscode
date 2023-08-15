@@ -1,5 +1,5 @@
 {
-  "name": "hol4-mode",
+	"name": "hol4-mode",
 	"displayName": "HOL4 mode",
 	"description": "A VSCode extension for interacting with the HOL4 theorem prover",
 	"version": "0.0.8",
@@ -26,10 +26,16 @@
 		"languages": [
 			{
 				"id": "hol4",
-				"extensions": [".sml"],
-				"aliases": ["HOL4"],
+				"extensions": [
+					".sml"
+				],
+				"aliases": [
+					"HOL4"
+				],
 				"configuration": "./hol4-language.json",
-				"filenamePatterns": ["*Script.sml"]
+				"filenamePatterns": [
+					"*Script.sml"
+				]
 			}
 		],
 		"commands": [
@@ -40,6 +46,10 @@
 			{
 				"command": "hol4-mode.stopSession",
 				"title": "HOL: Stop session"
+			},
+			{
+				"command": "hol4-mode.interrupt",
+				"title": "HOL: Interrupt session"
 			},
 			{
 				"command": "hol4-mode.sendSelection",
@@ -62,6 +72,10 @@
 				"title": "HOL: Send tactic"
 			},
 			{
+				"command": "hol4-mode.sendTacticLine",
+				"title": "HOL: Send tactic line"
+			},
+			{
 				"command": "hol4-mode.proofmanShow",
 				"title": "HOL: Show current goal"
 			},
@@ -82,6 +96,18 @@
 				"title": "HOL: Step backwards in proof"
 			},
 			{
+				"command": "hol4-mode.showTypesTrue",
+				"title": "HOL: Show types"
+			},
+			{
+				"command": "hol4-mode.indexWorkspace",
+				"title": "HOL: Index workspace for IDE"
+			},
+			{
+				"command": "hol4-mode.showTypesFalse",
+				"title": "HOL: Don't show types"
+			},
+			{
 				"command": "hol4-mode.holmake",
 				"title": "HOL: Run Holmake in directory of the current document"
 			}
@@ -97,6 +123,12 @@
 				"command": "hol4-mode.stopSession",
 				"key": "ctrl+h ctrl+x",
 				"mac": "cmd+h cmd+x",
+				"when": "editorLangId == hol4"
+			},
+			{
+				"command": "hol4-mode.interrupt",
+				"key": "ctrl+h ctrl+i",
+				"mac": "cmd+h cmd+i",
 				"when": "editorLangId == hol4"
 			},
 			{
@@ -127,6 +159,12 @@
 				"command": "hol4-mode.sendTactic",
 				"key": "ctrl+h e",
 				"mac": "cmd+h e",
+				"when": "editorLangId == hol4"
+			},
+			{
+				"command": "hol4-mode.sendTacticLine",
+				"key": "ctrl+h ctrl+e",
+				"mac": "cmd+h ctrl+e",
 				"when": "editorLangId == hol4"
 			},
 			{
