@@ -100,12 +100,16 @@
 				"title": "HOL: Show types"
 			},
 			{
+				"command": "hol4-mode.showTypesFalse",
+				"title": "HOL: Don't show types"
+			},
+			{
 				"command": "hol4-mode.indexWorkspace",
 				"title": "HOL: Index workspace for IDE"
 			},
 			{
-				"command": "hol4-mode.showTypesFalse",
-				"title": "HOL: Don't show types"
+				"command": "hol4-mode.reindexAllDependencies",
+				"title": "HOL: Reindex all dependencies"
 			},
 			{
 				"command": "hol4-mode.holmake",
@@ -197,7 +201,17 @@
 				"mac": "cmd+h d",
 				"when": "editorLangId == hol4"
 			}
-		]
+		],
+		"configuration": {
+			"title": "HOL4",
+			"properties": {
+				"hol4-mode.experimental": {
+					"type": "boolean",
+					"default": false,
+					"description": "Enable experimental IDE features for HOL4"
+				}
+			}
+		}
 	},
 	"scripts": {
 		"vscode:prepublish": "npm run compile",
