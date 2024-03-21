@@ -16,7 +16,7 @@ N/A
 
 ## Known Issues
 
-- Syntax highlighting is lacking. Logical terms are expecially bad. The situation
+- Syntax highlighting is lacking. Logical terms are especially bad. The situation
   could be improved by implementing a HOL language server.
 - There is some hacky code that attempts to strip ML comments from input that is
   being sent to HOL. Currently, this does not properly deal with nested comments,
@@ -25,5 +25,3 @@ N/A
 - `load` calls are not inserted when calls to qualified ML code is made.
 - Location pragmas are not inserted at calls to `{Co}Inductive`, `Datatype`,
   `Theorem`, nor in term quotations.
-- There's no command for toggling whether types are printed or not; use
-  `show_types := {true, false}` in the meantime.
