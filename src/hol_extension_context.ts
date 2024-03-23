@@ -1,9 +1,8 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import * as fs from 'fs';
-import { HOLExtensionContext, log, error, isInactive } from './commons';
-import { HOLIDE, HOLSymbolInformation } from './ide';
-import { HolTerminal } from './terminal';
+import { log, error } from './common';
+import { HolTerminal } from './hol_terminal';
+import { HOLIDE } from './hol_ide';
 
 /**
  * Generate a HOL lexer location pragma from a vscode Position value.
@@ -12,7 +11,7 @@ function positionToLocationPragma(pos: vscode.Position): string {
     return `(*#loc ${pos.line + 1} ${pos.character} *)`;
 }
 
-export type SearchForwardResult = {
+type SearchForwardResult = {
     matchStart: number;
     contentStart: number;
     matchEnd: number;
@@ -241,218 +240,297 @@ function extractSubgoal(editor: vscode.TextEditor): string | undefined {
     return;
 }
 
-/** Start HOL terminal session */
-export function startSession(editor: vscode.TextEditor, holExtensionContext: HOLExtensionContext): void {
-    if (holExtensionContext.active) {
-        vscode.window.showErrorMessage('HOL session already active; doing nothing.');
-        error('Session already active; doing nothing');
-        return;
+export class HOLExtensionContext {
+
+    /**
+     * Path to the HOL installation to use.
+     */
+    public holPath: string;
+
+    /**
+     * Currently active pseudoterminal (if any).
+     */
+    public holTerminal?: HolTerminal;
+
+    /**
+     * Current IDE class instance.
+     */
+    public holIDE?: HOLIDE;
+
+    /**
+     * Currently active terminal (if any).
+     */
+    public terminal?: vscode.Terminal;
+
+    /**
+     * Whether the HOL session is active.
+     */
+    public active = false;
+
+    constructor(holPath: string, holIDE?: HOLIDE) {
+        this.holPath = holPath;
+        this.holIDE = holIDE;
     }
 
-    let docPath = path.dirname(editor.document.uri.fsPath);
-    holExtensionContext.holTerminal = new HolTerminal(docPath, holExtensionContext.holPath!);
-    holExtensionContext.terminal = vscode.window.createTerminal({
-        name: 'HOL4',
-        pty: holExtensionContext.holTerminal
-    });
-
-    vscode.window.onDidCloseTerminal((e: vscode.Terminal) => {
-        if (e === holExtensionContext.terminal) {
-            holExtensionContext.active = false;
-            //terminal.dispose();
-            holExtensionContext.terminal = undefined;
-            log('Closed terminal; deactivating');
+    /** Returns whether the current session is active. If it is not active, then
+     * an error message is printed.
+     */
+    isActive(): boolean {
+        if (!this.active) {
+            vscode.window.showErrorMessage('No active HOL session; doing nothing.');
+            error('No active session; doing nothing');
         }
-    });
 
-    log('Started session');
-    holExtensionContext.terminal.show(true);
-    holExtensionContext.active = true;
-}
-
-/** Stop the HOL terminal session */
-export function stopSession(holExtensionContext: HOLExtensionContext): void {
-    if (isInactive(holExtensionContext)) {
-        return;
+        return this.active;
     }
 
-    log('Stopped session');
-    holExtensionContext.terminal?.dispose();
-    holExtensionContext.active = false;
-}
+    /**
+     * Start HOL terminal session.
+     */
+    startSession(editor: vscode.TextEditor) {
+        if (this.active) {
+            vscode.window.showErrorMessage('HOL session already active; doing nothing.');
+            error('Session already active; doing nothing');
+            return;
+        }
 
-/** Send interrupt signal to the hol terminal */
-export function interrupt(holExtensionContext: HOLExtensionContext): void {
-    if (isInactive(holExtensionContext)) {
-        return;
+        let docPath = path.dirname(editor.document.uri.fsPath);
+        this.holTerminal = new HolTerminal(docPath, this.holPath);
+        this.terminal = vscode.window.createTerminal({
+            name: 'HOL4',
+            pty: this.holTerminal
+        });
+
+        vscode.window.onDidCloseTerminal((e: vscode.Terminal) => {
+            if (e === this.terminal) {
+                this.active = false;
+                this.terminal = undefined;
+                log('Closed terminal; deactivating');
+            }
+        });
+
+        log('Started session');
+        this.terminal.show(true);
+        this.active = true;
     }
 
-    log('Interrupted session');
-    holExtensionContext.holTerminal?.interrupt();
-}
+    /**
+     * Stop the HOL terminal session.
+     */
+    stopSession() {
+        if (!this.isActive()) {
+            return;
+        }
 
-/** Send selection to the terminal; preprocess to find `open` and `load`
-  * calls.
-  */
-export function sendSelection(editor: vscode.TextEditor, holExtensionContext: HOLExtensionContext): void {
-    if (isInactive(holExtensionContext)) {
-        return;
+        log('Stopped session');
+        this.terminal?.dispose();
+        this.active = false;
     }
 
-    let text = getSelection(editor);
-    text = processOpens(text);
+    /**
+     * Send interrupt signal to the HolTerminal.
+     */
+    interrupt() {
+        if (!this.isActive()) {
+            return;
+        }
 
-    holExtensionContext.holTerminal!.sendRaw(`${text};\n`);
-}
-
-/** Send all text up to and including the current line in the current editor
-  * to the terminal.
-  */
-export function sendUntilCursor(editor: vscode.TextEditor, holExtensionContext: HOLExtensionContext): void {
-    if (isInactive(holExtensionContext)) {
-        return;
+        log('Interrupted session');
+        this.holTerminal?.interrupt();
     }
 
-    const selection = editor.selection;
-    const document = editor.document;
-    const currentLine = selection.active.line;
-    let text = document.getText(new vscode.Selection(0, 0, currentLine, 0));
-    text = processOpens(text);
+    /**
+     * Send selection to the terminal; preprocess to find `open` and `load`
+     * calls.
+     */
+    sendSelection(editor: vscode.TextEditor) {
+        if (!this.isActive()) {
+            return;
+        }
 
-    holExtensionContext.holTerminal!.sendRaw(`${text};\n`);
-}
+        let text = getSelection(editor);
+        text = processOpens(text);
 
-/** Send a goal selection to the terminal. */
-export function sendGoal(editor: vscode.TextEditor, holExtensionContext: HOLExtensionContext): void {
-    if (isInactive(holExtensionContext)) {
-        return;
+        this.holTerminal!.sendRaw(`${text};\n`);
     }
 
-    let text = extractGoal(editor);
-    if (!text) {
-        vscode.window.showErrorMessage('Unable to select a goal term');
-        error('Unable to select goal term');
-        return;
+
+    /**
+     * Send all text up to and including the current line in the current editor to
+     * the terminal.
+     */
+    sendUntilCursor(editor: vscode.TextEditor) {
+        if (!this.isActive()) {
+            return;
+        }
+
+        const selection = editor.selection;
+        const document = editor.document;
+        const currentLine = selection.active.line;
+        let text = document.getText(new vscode.Selection(0, 0, currentLine, 0));
+        text = processOpens(text);
+
+        this.holTerminal!.sendRaw(`${text};\n`);
     }
 
-    holExtensionContext.holTerminal!.sendRaw(`proofManagerLib.g(\`${text}\`);\n`);
-    holExtensionContext.holTerminal!.sendRaw('proofManagerLib.set_backup 100;\n');
-}
+    /**
+     * Send a goal selection to the terminal.
+     */
+    sendGoal(editor: vscode.TextEditor) {
+        if (!this.isActive()) {
+            return;
+        }
 
-/** Select a term quotation and set it up as a subgoal. */
-export function sendSubgoal(editor: vscode.TextEditor, holExtensionContext: HOLExtensionContext): void {
-    if (isInactive(holExtensionContext)) {
-        return;
+        let text = extractGoal(editor);
+        if (!text) {
+            vscode.window.showErrorMessage('Unable to select a goal term');
+            error('Unable to select goal term');
+            return;
+        }
+
+        this.holTerminal!.sendRaw(`proofManagerLib.g(\`${text}\`);\n`);
+        this.holTerminal!.sendRaw('proofManagerLib.set_backup 100;\n');
     }
 
-    let text = extractSubgoal(editor);
-    if (!text) {
-        vscode.window.showErrorMessage('Unable to select a subgoal term');
-        error('Unable to select subgoal term');
-        return;
+    /**
+     * Select a term quotation and set it up as a subgoal.
+     */
+    sendSubgoal(editor: vscode.TextEditor) {
+        if (!this.isActive()) {
+            return;
+        }
+
+        let text = extractSubgoal(editor);
+        if (!text) {
+            vscode.window.showErrorMessage('Unable to select a subgoal term');
+            error('Unable to select subgoal term');
+            return;
+        }
+
+        this.holTerminal!.sendRaw(`proofManagerLib.e(sg\`${text}\`);\n`);
     }
 
-    holExtensionContext.holTerminal!.sendRaw(`proofManagerLib.e(sg\`${text}\`);\n`);
-}
+    /**
+     * Send a tactic to the terminal.
+     */
+    sendTactic(editor: vscode.TextEditor) {
+        if (!this.isActive()) {
+            return;
+        }
 
-/** Send a tactic to the terminal. */
-export function sendTactic(editor: vscode.TextEditor, holExtensionContext: HOLExtensionContext): void {
-    if (isInactive(holExtensionContext)) {
-        return;
+        let tacticText = getSelection(editor);
+        tacticText = processTactics(tacticText);
+
+        const locPragma = positionToLocationPragma(editor.selection.anchor);
+        const trace = '"show_typecheck_errors"';
+        const data = [
+            'let val old = Feedback.current_trace ', trace,
+            '    val _ = Feedback.set_trace ', trace, ' 0 in (',
+            locPragma, ') before Feedback.set_trace ', trace, ' old end;',
+            `proofManagerLib.e(${tacticText});`
+        ].join('');
+        this.holTerminal!.sendRaw(`${data};\n`);
     }
 
-    let tacticText = getSelection(editor);
-    tacticText = processTactics(tacticText);
 
-    const locPragma = positionToLocationPragma(editor.selection.anchor);
-    const trace = '"show_typecheck_errors"';
-    const data = [
-        'let val old = Feedback.current_trace ', trace,
-        '    val _ = Feedback.set_trace ', trace, ' 0 in (',
-        locPragma, ') before Feedback.set_trace ', trace, ' old end;',
-        `proofManagerLib.e(${tacticText});`
-    ].join('');
-    holExtensionContext.holTerminal!.sendRaw(`${data};\n`);
-}
+    /**
+     * Send a tactic line to the terminal.
+     */
+    sendTacticLine(editor: vscode.TextEditor) {
+        if (!this.isActive()) {
+            return;
+        }
 
-/** Send a tactic line to the terminal. */
-export function sendTacticLine(editor: vscode.TextEditor, holExtensionContext: HOLExtensionContext): void {
-    if (isInactive(holExtensionContext)) {
-        return;
+        let tacticText = editor.document.lineAt(editor.selection.active.line).text;
+        tacticText = processTactics(tacticText);
+
+        const locPragma = positionToLocationPragma(editor.selection.anchor);
+        const trace = '"show_typecheck_errors"';
+        const data = [
+            'let val old = Feedback.current_trace ', trace,
+            '    val _ = Feedback.set_trace ', trace, ' 0 in (',
+            locPragma, ') before Feedback.set_trace ', trace, ' old end;',
+            `proofManagerLib.e(${tacticText});`
+        ].join('');
+        this.holTerminal!.sendRaw(`${data};\n`);
     }
 
-    let tacticText = editor.document.lineAt(editor.selection.active.line).text;
-    tacticText = processTactics(tacticText);
+    /**
+     * Show current goal.
+     */
+    showCurrentGoal() {
+        if (!this.isActive()) {
+            return;
+        }
 
-    const locPragma = positionToLocationPragma(editor.selection.anchor);
-    const trace = '"show_typecheck_errors"';
-    const data = [
-        'let val old = Feedback.current_trace ', trace,
-        '    val _ = Feedback.set_trace ', trace, ' 0 in (',
-        locPragma, ') before Feedback.set_trace ', trace, ' old end;',
-        `proofManagerLib.e(${tacticText});`
-    ].join('');
-    holExtensionContext.holTerminal!.sendRaw(`${data};\n`);
-}
-
-/** Show current goal */
-export function showCurrentGoal(holExtensionContext: HOLExtensionContext): void {
-    if (isInactive(holExtensionContext)) {
-        return;
+        this.holTerminal!.sendRaw('proofManagerLib.p ();\n');
     }
 
-    holExtensionContext.holTerminal!.sendRaw('proofManagerLib.p ();\n');
-}
 
-/** Rotate goal */
-export function rotateGoal(holExtensionContext: HOLExtensionContext): void {
-    if (isInactive(holExtensionContext)) {
-        return;
+    /**
+     * Rotate goal.
+     */
+    rotateGoal() {
+        if (!this.isActive()) {
+            return;
+        }
+
+        this.holTerminal!.sendRaw('proofManagerLib.rotate 1;\n');
     }
 
-    holExtensionContext.holTerminal!.sendRaw('proofManagerLib.rotate 1;\n');
-}
+    /**
+     * Step backwards goal.
+     */
+    stepbackGoal() {
+        if (!this.isActive()) {
+            return;
+        }
 
-/** Backstep in goal */
-export function backstepGoal(holExtensionContext: HOLExtensionContext): void {
-    if (isInactive(holExtensionContext)) {
-        return;
+        this.holTerminal!.sendRaw('proofManagerLib.backup ();\n');
     }
 
-    holExtensionContext.holTerminal!.sendRaw('proofManagerLib.backup ();\n');
-}
+    /**
+     * Restart goal.
+     */
+    restartGoal() {
+        if (!this.isActive()) {
+            return;
+        }
 
-/** Restart goal */
-export function restartGoal(holExtensionContext: HOLExtensionContext): void {
-    if (isInactive(holExtensionContext)) {
-        return;
+        this.holTerminal!.sendRaw('proofManagerLib.restart ();\n');
     }
 
-    holExtensionContext.holTerminal!.sendRaw('proofManagerLib.restart ();\n');
-}
+    /**
+     * Drop goal.
+     */
+    dropGoal() {
+        if (!this.isActive()) {
+            return;
+        }
 
-/** Drop goal */
-export function dropGoal(holExtensionContext: HOLExtensionContext): void {
-    if (isInactive(holExtensionContext)) {
-        return;
+        this.holTerminal!.sendRaw('proofManagerLib.drop();\n');
     }
 
-    holExtensionContext.holTerminal!.sendRaw('proofManagerLib.drop();\n');
-}
+    /**
+     * Toggle printing of terms with or without types.
+     */
+    toggleShowTypes() {
+        if (!this.isActive()) {
+            return;
+        }
 
-/** Toggle printing of terms with or without types */
-export function toggleShowTypes(holExtensionContext: HOLExtensionContext): void {
-    if (isInactive(holExtensionContext)) {
-        return;
+        this.holTerminal!.sendRaw('Globals.show_types:=not(!Globals.show_types);\n');
     }
 
-    holExtensionContext.holTerminal!.sendRaw('Globals.show_types:=not(!Globals.show_types);\n');
-}
 
-export function toggleShowAssums(holExtensionContext: HOLExtensionContext) {
-    if (isInactive(holExtensionContext)) {
-        return;
+    /**
+     * Toggle printing of theorem hypotheses.
+     */
+    toggleShowAssums() {
+        if (!this.isActive()) {
+            return;
+        }
+        this.holTerminal!.sendRaw('Globals.show_assums:=not(!Globals.show_assums);\n');
     }
-    holExtensionContext.holTerminal!.sendRaw('Globals.show_assums:=not(!Globals.show_assums);\n');
-}
+};
 

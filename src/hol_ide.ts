@@ -24,7 +24,7 @@ export class HOLIDE {
     dependencyVariables: string[] = ['$HOLDIR','$CAKEMLDIR'];
     holIDEDir: string = '.holide';
 
-    initIDE() {
+    constructor() {
         const workspacePath = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
         this.cachedEntries = this.readEntriesOfDir(workspacePath!);
         const unindexedDeps: string[] = [];
@@ -40,7 +40,7 @@ export class HOLIDE {
 
         if (unindexedDeps.length > 0) {
             vscode.window.showInformationMessage(
-                `HOL: Couldn't read ide information from some of the dependencies, namely: ${unindexedDeps}. Do you want to index them now?`,
+                `HOL: Couldn't read IDE information from some of the dependencies, namely: ${unindexedDeps}. Do you want to index them now?`,
                 'Yes',
                 'No'
             )
@@ -51,7 +51,7 @@ export class HOLIDE {
             });
         }
 
-        var editor = vscode.window.activeTextEditor;
+        const editor = vscode.window.activeTextEditor;
         if (editor) {
             this.imports = this.getImports(editor.document);
         }

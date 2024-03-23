@@ -3,6 +3,17 @@ import * as child_process from 'child_process';
 import * as path from 'path';
 
 /**
+ * Fixes linebreaks and backspaces when printing back to terminal stdout.
+ */
+function fixLineBreak(text: string) {
+    return text
+        .replace(/\r\n/gi,'\r')
+        .replace(/\r/gi, '\n')
+        .replace(/\n/gi, '\r\n')
+        .replace(/\x7f/gi,'\b \b');
+}
+
+/**
  * This class wraps the Pseudoterminal interface with some functionality to
  * toggle terminal echo. We need to toggle echoing of input as text is sent to
  * the HOL process via its `stdin`, and the plugin would become unbearable to
@@ -12,20 +23,11 @@ export class HolTerminal implements vscode.Pseudoterminal {
 
     private cwd: string;
     private holPath: string;
-    private child: child_process.ChildProcess | undefined;
+    private child?: child_process.ChildProcess;
     private writeEmitter = new vscode.EventEmitter<string>();
     private closeEmitter = new vscode.EventEmitter<void>();
 
     private buffer: string[] = [];
-
-    // Fixes linebreaks and backspaces when printing back to terminal stdout.
-    private fixLineBreak(text: string) {
-        return text
-            .replace(/\r\n/gi,'\r')
-            .replace(/\r/gi, '\n')
-            .replace(/\n/gi, '\r\n')
-            .replace(/\x7f/gi,'\b \b');
-    }
 
     userInput: boolean = true;
     sendRaw(text: string) {
@@ -44,16 +46,16 @@ export class HolTerminal implements vscode.Pseudoterminal {
 
     open(_initialDimensions: vscode.TerminalDimensions | undefined) {
         this.child = child_process.spawn(path.join(this.holPath!, 'bin', 'hol'), {
+            // eslint-disable-next-line @typescript-eslint/naming-convention
             env: {...process.env, ...{'TERM': 'xterm'}},
             cwd: this.cwd,
             detached: true,
         });
         this.child.stdout?.on('data', (data: Buffer) => {
-            this.writeEmitter.fire(this.fixLineBreak(data.toString()));
+            this.writeEmitter.fire(fixLineBreak(data.toString()));
         });
         this.child.stderr?.on('data', (data: Buffer) => {
-            console.log(data);
-            this.writeEmitter.fire(this.fixLineBreak(data.toString()));
+            this.writeEmitter.fire(fixLineBreak(data.toString()));
         });
     }
 
@@ -73,7 +75,7 @@ export class HolTerminal implements vscode.Pseudoterminal {
 
     handleInput(data: string) {
         if (this.userInput) {
-            this.writeEmitter.fire(this.fixLineBreak(data));
+            this.writeEmitter.fire(fixLineBreak(data));
 
             if (data[0] === '\b' || data[0] === '\x7f') {
                 this.buffer.pop();
