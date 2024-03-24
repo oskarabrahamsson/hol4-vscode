@@ -3,18 +3,12 @@
   "scopeName": "source.hol4",
   "fileTypes": [".sml"],
   "repository": {
-
-    "todos": {
-      "name": "invalid.todo.ml",
-      "match": "(TODO|NOTE|XXX|FIXME)"
-    },
     "comments": {
       "name": "comment.block.hol",
       "begin": "\\(\\*",
       "end": "\\*\\)",
       "patterns": [
-        { "include": "#comments" },
-        { "include": "#todos" }
+        { "include": "#comments" }
       ]
     },
     "escaped-chars": {
