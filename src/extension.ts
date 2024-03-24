@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
-import { HOLIDE, HOLSymbolInformation } from './hol_ide';
+import { HOLIDE } from './hol_ide';
 import { HOLExtensionContext } from './hol_extension_context';
 import { log, error } from './common';
 
@@ -46,10 +46,8 @@ function initialize(): HOLExtensionContext | undefined {
     }
 
     let holIDE;
-    if (vscode.workspace.getConfiguration('hol4-mode').get('experimental', false)) {
+    if (vscode.workspace.getConfiguration('hol4-mode').get('indexing')) {
         holIDE = new HOLIDE();
-    } else {
-        vscode.window.showWarningMessage('HOL4 mode: experimental features disabled. In order to enable them, set hol4-mode.experimental to true in your settings.');
     }
 
     return new HOLExtensionContext(holPath, holIDE);
@@ -57,8 +55,8 @@ function initialize(): HOLExtensionContext | undefined {
 
 export function activate(context: vscode.ExtensionContext) {
     const holExtensionContext = initialize();
-    if (holExtensionContext === undefined) {
-        error("Unable to initialize cextension.");
+    if (!holExtensionContext) {
+        error("Unable to initialize extension.");
         return;
     }
 
@@ -160,8 +158,7 @@ export function activate(context: vscode.ExtensionContext) {
             terminal.show(true);
         }),
 
-        // HOL IDE commands START
-
+        // Refresh the import list for the currently active document.
         vscode.window.onDidChangeActiveTextEditor((editor) => {
             if (editor) {
                 holExtensionContext.holIDE?.updateImports(editor.document);
@@ -169,71 +166,35 @@ export function activate(context: vscode.ExtensionContext) {
         }),
 
         vscode.workspace.onDidSaveTextDocument((document) => {
-            holExtensionContext.holIDE?.indexWorkspace(document);
+            holExtensionContext.holIDE?.indexDocument(document);
         }),
 
         vscode.commands.registerCommand('hol4-mode.indexWorkspace', () => {
             holExtensionContext.holIDE?.indexWorkspace();
         }),
 
-        vscode.commands.registerCommand('hol4-mode.reindexAllDependencies', () => {
-            holExtensionContext.holIDE?.reindexAllDependencies();
+        vscode.commands.registerCommand('hol4-mode.refreshIndex', () => {
+            holExtensionContext.holIDE?.refreshIndex();
         }),
 
-        vscode.languages.registerHoverProvider(hol4selector, {
-            provideHover(document: vscode.TextDocument, position: vscode.Position, token: vscode.CancellationToken) {
-                const wordRange = document.getWordRangeAtPosition(position);
-                const word = document.getText(wordRange);
-                const entry = holExtensionContext.holIDE?.allEntries().find((entry) => entry.name === word && holExtensionContext.holIDE?.isAccessibleEntry(entry, holExtensionContext.holIDE?.imports, document));
-                if (entry) {
-                    const markdownString = new vscode.MarkdownString();
-                    markdownString.appendMarkdown(`**${entry.type}:** ${entry.name}\n\n`);
-                    markdownString.appendCodeblock(entry.statement);
-                    return new vscode.Hover(markdownString, wordRange);
-                }
-            }
-        }),
+        vscode.languages.registerHoverProvider(
+            hol4selector,
+            holExtensionContext,
+        ),
 
-        vscode.languages.registerDefinitionProvider(hol4selector, {
-            provideDefinition(document: vscode.TextDocument, position: vscode.Position, token: vscode.CancellationToken) {
-                const wordRange = document.getWordRangeAtPosition(position);
-                const word = document.getText(wordRange);
-                const entry = holExtensionContext.holIDE?.allEntries().find((entry) => entry.name === word && holExtensionContext.holIDE?.isAccessibleEntry(entry, holExtensionContext.holIDE?.imports, document));
-                if (entry) {
-                    const position = new vscode.Position(entry.line! - 1, 0);
-                    return new vscode.Location(vscode.Uri.file(entry.file!), position);
-                }
-            }
-        }),
+        vscode.languages.registerDefinitionProvider(
+            hol4selector,
+            holExtensionContext,
+        ),
 
-        vscode.languages.registerDocumentSymbolProvider(hol4selector, {
-            provideDocumentSymbols(document: vscode.TextDocument, token: vscode.CancellationToken): vscode.ProviderResult<HOLSymbolInformation[]> {
-                const symbols: HOLSymbolInformation[] = [];
-                holExtensionContext.holIDE?.cachedEntries.filter((entry) => entry.file === document.uri.path).forEach((entry) => {
-                    const symbol = holExtensionContext.holIDE?.holEntryToSymbol(entry);
-                    if (symbol) {
-                        symbols.push(symbol);
-                    }
-                });
-                return symbols;
-            }
-        }),
+        vscode.languages.registerDocumentSymbolProvider(
+            hol4selector,
+            holExtensionContext,
+        ),
 
-        vscode.languages.registerWorkspaceSymbolProvider({
-            provideWorkspaceSymbols(query: string, token: vscode.CancellationToken): vscode.ProviderResult<HOLSymbolInformation[]> {
-                const symbols: HOLSymbolInformation[] = [];
-                const matcher = new RegExp(query, 'i');
-                holExtensionContext.holIDE?.allEntries().forEach((entry) => {
-                    if (matcher.test(entry.name)) {
-                        const symbol = holExtensionContext.holIDE?.holEntryToSymbol(entry);
-                        if (symbol) {
-                            symbols.push(symbol);
-                        }
-                    }
-                });
-                return symbols;
-            }
-        }),
+        vscode.languages.registerWorkspaceSymbolProvider(
+            holExtensionContext,
+        ),
 
         // HOL IDE commands END
 
@@ -256,28 +217,14 @@ export function activate(context: vscode.ExtensionContext) {
             ...['\\']
         ),
 
-        vscode.languages.registerCompletionItemProvider(hol4selector, {
-            provideCompletionItems(document: vscode.TextDocument, position: vscode.Position, token: vscode.CancellationToken, context: vscode.CompletionContext): vscode.ProviderResult<vscode.CompletionItem[]> {
-                const wordRange = document.getWordRangeAtPosition(position);
-                if (!wordRange) {
-                    return [];
-                }
-                const word = document.getText(wordRange);
-                const completions: vscode.CompletionItem[] = [];
-                const matcher = new RegExp(word, 'i');
-                holExtensionContext.holIDE?.allEntries().forEach((entry) => {
-                    if (matcher.test(entry.name) && holExtensionContext.holIDE?.isAccessibleEntry(entry, holExtensionContext.holIDE?.imports, document)) {
-                        const item = holExtensionContext.holIDE?.createCompletionItem(entry, vscode.CompletionItemKind.Function);
-                        completions.push(item);
-                    }
-                });
-                return completions;
-            }
-        })
+        vscode.languages.registerCompletionItemProvider(
+            hol4selector,
+            holExtensionContext,
+        ),
     ];
 
     commands.forEach((cmd) => context.subscriptions.push(cmd));
 }
 
 // this method is called when your extension is deactivated
-export function deactivate() {}
+export function deactivate() { }

@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import { log, error } from './common';
 import { HolTerminal } from './hol_terminal';
-import { HOLIDE } from './hol_ide';
+import { HOLIDE, entryToCompletionItem, entryToSymbol, isAccessibleEntry } from './hol_ide';
 
 /**
  * Generate a HOL lexer location pragma from a vscode Position value.
@@ -28,7 +28,7 @@ type SearchForwardResult = {
  * @param stop Ending match
  * @param offset Offset into `data` from where to start search
  */
-function searchForward(text: string,  offset: number, init: RegExp, stop: RegExp): SearchForwardResult | undefined {
+function searchForward(text: string, offset: number, init: RegExp, stop: RegExp): SearchForwardResult | undefined {
     text = text.slice(offset);
 
     const initMatch = init.exec(text);
@@ -68,7 +68,7 @@ function getSelection(editor: vscode.TextEditor): string {
     const document = editor.document;
     const selection = editor.selection;
     return selection.isEmpty ? document.lineAt(selection.active.line).text
-                             : document.getText(selection);
+        : document.getText(selection);
 }
 
 /**
@@ -522,7 +522,6 @@ export class HOLExtensionContext {
         this.holTerminal!.sendRaw('Globals.show_types:=not(!Globals.show_types);\n');
     }
 
-
     /**
      * Toggle printing of theorem hypotheses.
      */
@@ -531,6 +530,96 @@ export class HOLExtensionContext {
             return;
         }
         this.holTerminal!.sendRaw('Globals.show_assums:=not(!Globals.show_assums);\n');
+    }
+
+    /**
+     * See {@link vscode.HoverProvider}.
+     */
+    provideHover(document: vscode.TextDocument, position: vscode.Position, token: vscode.CancellationToken) {
+        const wordRange = document.getWordRangeAtPosition(position);
+        const word = document.getText(wordRange);
+        const entry = this.holIDE?.allEntries().find((entry) =>
+            entry.name === word &&
+            isAccessibleEntry(entry, this.holIDE!.imports, document));
+        if (entry) {
+            const markdownString = new vscode.MarkdownString();
+            markdownString.appendMarkdown(`**${entry.type}:** ${entry.name}\n\n`);
+            markdownString.appendCodeblock(entry.statement);
+            return new vscode.Hover(markdownString, wordRange);
+        }
+    }
+
+    /**
+     * See {@link vscode.DefinitionProvider}.
+     */
+    provideDefinition(
+        document: vscode.TextDocument,
+        position: vscode.Position,
+        _token: vscode.CancellationToken,
+    ) {
+        const wordRange = document.getWordRangeAtPosition(position);
+        const word = document.getText(wordRange);
+        const entry = this.holIDE?.allEntries().find((entry) =>
+            entry.name === word &&
+            isAccessibleEntry(entry, this.holIDE!.imports, document));
+        if (entry) {
+            const position = new vscode.Position(entry.line! - 1, 0);
+            return new vscode.Location(vscode.Uri.file(entry.file!), position);
+        }
+    }
+
+    /**
+     * See {@link vscode.DocumentSymbolProvider}.
+     */
+    provideDocumentSymbols(
+        document: vscode.TextDocument,
+        _token: vscode.CancellationToken,
+    ) {
+        return this.holIDE?.documentEntries(document)
+            .map((entry) => entryToSymbol(entry));
+    }
+
+    /**
+     * See {@link vscode.WorkspaceSymbolProvider<T>}.
+     */
+    provideWorkspaceSymbols(
+        query: string,
+        _token: vscode.CancellationToken,
+    ) {
+        const symbols: vscode.SymbolInformation[] = [];
+        const matcher = new RegExp(query, "i" /* ignoreCase */);
+        this.holIDE?.allEntries().forEach((entry) => {
+            if (matcher.test(entry.name)) {
+                symbols.push(entryToSymbol(entry));
+            }
+        });
+        return symbols;
+    }
+
+    /**
+     * See {@link vscode.CompletionItemProvider}.
+     */
+    provideCompletionItems(
+        document: vscode.TextDocument,
+        position: vscode.Position,
+        _token: vscode.CancellationToken,
+        _context: vscode.CompletionContext,
+    ) {
+        const wordRange = document.getWordRangeAtPosition(position);
+        if (!wordRange) {
+            return [];
+        }
+
+        const word = document.getText(wordRange);
+        const completions: vscode.CompletionItem[] = [];
+        const matcher = new RegExp(word, "i" /* ignoreCase */);
+        this.holIDE?.allEntries().forEach((entry) => {
+            if (matcher.test(entry.name) &&
+                isAccessibleEntry(entry, this.holIDE!.imports, document)) {
+                completions.push(entryToCompletionItem(entry));
+            }
+        });
+        return completions;
     }
 };
 
