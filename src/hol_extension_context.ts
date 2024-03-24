@@ -343,15 +343,29 @@ export class HOLExtensionContext {
      * Send selection to the terminal; preprocess to find `open` and `load`
      * calls.
      */
-    sendSelection(editor: vscode.TextEditor) {
+    sendSelection(editor: vscode.TextEditor, selection: vscode.Selection | undefined) {
         if (!this.isActive()) {
             return;
         }
 
-        let text = getSelection(editor);
+        let text;
+        if (!selection) {
+            text = getSelection(editor);
+        } else {
+            text = editor.document.getText(selection);
+        }
         text = processOpens(text);
 
-        this.holTerminal!.sendRaw(`${text};\n`);
+        const locPragma = positionToLocationPragma(editor.selection.anchor);
+        const trace = '"show_typecheck_errors"';
+        const data = [
+            'let val old = Feedback.current_trace ', trace,
+            '    val _ = Feedback.set_trace ', trace, ' 0 in (',
+            locPragma, ') before Feedback.set_trace ', trace, ' old end;',
+            `${text};`
+        ].join('');
+
+        this.holTerminal!.sendRaw(`${data};\n`);
     }
 
 
@@ -365,12 +379,10 @@ export class HOLExtensionContext {
         }
 
         const selection = editor.selection;
-        const document = editor.document;
         const currentLine = selection.active.line;
-        let text = document.getText(new vscode.Selection(0, 0, currentLine, 0));
-        text = processOpens(text);
+        const newSelection = new vscode.Selection(0, 0, currentLine, 0);
 
-        this.holTerminal!.sendRaw(`${text};\n`);
+        this.sendSelection(editor, newSelection);
     }
 
     /**
