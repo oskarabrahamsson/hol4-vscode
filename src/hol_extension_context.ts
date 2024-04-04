@@ -358,7 +358,7 @@ export class HOLExtensionContext {
      * Send selection to the terminal; preprocess to find `open` and `load`
      * calls.
      */
-    sendSelection(editor: vscode.TextEditor, selection: vscode.Selection | undefined) {
+    sendSelection(editor: vscode.TextEditor) {
         if (!this.isActive()) {
             return;
         }
