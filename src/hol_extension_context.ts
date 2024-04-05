@@ -72,6 +72,21 @@ function getSelection(editor: vscode.TextEditor): string {
 }
 
 /**
+ * Adds a location pragma to the text at the given position.
+ */
+function addLocationPragma(text: string, position: vscode.Position) { 
+    const locPragma = positionToLocationPragma(position);
+    const trace = '"show_typecheck_errors"';
+    const data = [
+        'let val old = Feedback.current_trace ', trace,
+        '    val _ = Feedback.set_trace ', trace, ' 0 in (',
+        locPragma, ') before Feedback.set_trace ', trace, ' old end;',
+        `${text};`
+    ].join('');
+    return data;
+}
+
+/**
  * Preprocess any `open` declarations in a string. Any declarations are sorted,
  * and for each declaration a `load`-call is generated. If there are no `open`s
  * in the text, then this does nothing.
@@ -350,6 +365,7 @@ export class HOLExtensionContext {
 
         let text = getSelection(editor);
         text = processOpens(text);
+        text = addLocationPragma(text, editor.selection.anchor);
 
         this.holTerminal!.sendRaw(`${text};\n`);
     }
@@ -364,11 +380,11 @@ export class HOLExtensionContext {
             return;
         }
 
-        const selection = editor.selection;
-        const document = editor.document;
-        const currentLine = selection.active.line;
-        let text = document.getText(new vscode.Selection(0, 0, currentLine, 0));
+        const currentLine = editor.selection.active.line;
+
+        let text = editor.document.getText(new vscode.Selection(0, 0, currentLine, 0));
         text = processOpens(text);
+        text = addLocationPragma(text, editor.selection.anchor);
 
         this.holTerminal!.sendRaw(`${text};\n`);
     }
@@ -420,16 +436,9 @@ export class HOLExtensionContext {
 
         let tacticText = getSelection(editor);
         tacticText = processTactics(tacticText);
+        const text = addLocationPragma(`proofManagerLib.e(${tacticText})`, editor.selection.anchor);
 
-        const locPragma = positionToLocationPragma(editor.selection.anchor);
-        const trace = '"show_typecheck_errors"';
-        const data = [
-            'let val old = Feedback.current_trace ', trace,
-            '    val _ = Feedback.set_trace ', trace, ' 0 in (',
-            locPragma, ') before Feedback.set_trace ', trace, ' old end;',
-            `proofManagerLib.e(${tacticText});`
-        ].join('');
-        this.holTerminal!.sendRaw(`${data};\n`);
+        this.holTerminal!.sendRaw(`${text};\n`);
     }
 
 
@@ -443,16 +452,9 @@ export class HOLExtensionContext {
 
         let tacticText = editor.document.lineAt(editor.selection.active.line).text;
         tacticText = processTactics(tacticText);
+        const text = addLocationPragma(`proofManagerLib.e(${tacticText})`, editor.selection.anchor);
 
-        const locPragma = positionToLocationPragma(editor.selection.anchor);
-        const trace = '"show_typecheck_errors"';
-        const data = [
-            'let val old = Feedback.current_trace ', trace,
-            '    val _ = Feedback.set_trace ', trace, ' 0 in (',
-            locPragma, ') before Feedback.set_trace ', trace, ' old end;',
-            `proofManagerLib.e(${tacticText});`
-        ].join('');
-        this.holTerminal!.sendRaw(`${data};\n`);
+        this.holTerminal!.sendRaw(`${text};\n`);
     }
 
     /**
