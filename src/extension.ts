@@ -10,9 +10,14 @@ function loadUnicodeCompletions(context: vscode.ExtensionContext): { [key: strin
     let unicodeCompletionsFilepath = context.asAbsolutePath('unicode-completions.json');
 
     log('Loading unicode completions.');
-    const data = fs.readFileSync(unicodeCompletionsFilepath);
-    const completions: { [key: string]: string } = JSON.parse(data.toString());
-
+    let completions: { [key: string]: string } = {};
+    try {
+        const data = fs.readFileSync(unicodeCompletionsFilepath);
+        completions = JSON.parse(data.toString());
+    } catch (err) {
+        error(`Unable to read unicode completions file: ${err}`);
+        vscode.window.showErrorMessage('Unable to load unicode completions.');
+    }
     return completions;
 }
 
