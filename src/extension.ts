@@ -6,20 +6,18 @@ import { HOLExtensionContext } from './hol_extension_context';
 import { log, error } from './common';
 
 
-function loadUnicodeCompletions(context: vscode.ExtensionContext) {
+function loadUnicodeCompletions(context: vscode.ExtensionContext): { [key: string]: string } {
     let unicodeCompletionsFilepath = context.asAbsolutePath('unicode-completions.json');
-    let completions: { [key: string]: string } = {};
 
     log('Loading unicode completions.');
-    fs.readFile(unicodeCompletionsFilepath, (err, data) => {
-        if (err) {
-            error(`Unable to read unicode completions file: ${err}`);
-            vscode.window.showErrorMessage('Unable to load unicode completions.');
-        }
-
+    let completions: { [key: string]: string } = {};
+    try {
+        const data = fs.readFileSync(unicodeCompletionsFilepath);
         completions = JSON.parse(data.toString());
-    });
-
+    } catch (err) {
+        error(`Unable to read unicode completions file: ${err}`);
+        vscode.window.showErrorMessage('Unable to load unicode completions.');
+    }
     return completions;
 }
 
