@@ -365,7 +365,7 @@ export class HOLExtensionContext {
 
         let text = getSelection(editor);
         text = processOpens(text);
-        text = addLocationPragma(text, editor.selection.anchor);
+        text = addLocationPragma(text, editor.selection.start);
 
         this.holTerminal!.sendRaw(`${text};\n`);
     }
@@ -382,9 +382,10 @@ export class HOLExtensionContext {
 
         const currentLine = editor.selection.active.line;
 
-        let text = editor.document.getText(new vscode.Selection(0, 0, currentLine, 0));
+        const selection = new vscode.Selection(0, 0, currentLine, 0);
+        let text = editor.document.getText(selection);
         text = processOpens(text);
-        text = addLocationPragma(text, editor.selection.anchor);
+        text = addLocationPragma(text, selection.start);
 
         this.holTerminal!.sendRaw(`${text};\n`);
     }
@@ -436,7 +437,7 @@ export class HOLExtensionContext {
 
         let tacticText = getSelection(editor);
         tacticText = processTactics(tacticText);
-        const text = addLocationPragma(`proofManagerLib.e(${tacticText})`, editor.selection.anchor);
+        const text = addLocationPragma(`proofManagerLib.e(${tacticText})`, editor.selection.start);
 
         this.holTerminal!.sendRaw(`${text};\n`);
     }
@@ -452,7 +453,7 @@ export class HOLExtensionContext {
 
         let tacticText = editor.document.lineAt(editor.selection.active.line).text;
         tacticText = processTactics(tacticText);
-        const text = addLocationPragma(`proofManagerLib.e(${tacticText})`, editor.selection.anchor);
+        const text = addLocationPragma(`proofManagerLib.e(${tacticText})`, editor.selection.start);
 
         this.holTerminal!.sendRaw(`${text};\n`);
     }
