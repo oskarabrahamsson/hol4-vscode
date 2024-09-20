@@ -384,6 +384,13 @@ function findExtFiles(directory: string, ext: string): string[] {
     return smlFiles;
 }
 
+const importRegex = /^\s*open\b/mg;
+const identRegex = /\s+([a-zA-Z][a-zA-Z0-9_']*)\b/mg;
+const keywords = new Set([
+    'datatype', 'local', 'nonfix', 'prim_val', 'type', 'val', 'end', 'exception',
+    'functor', 'signature', 'structure', 'end', 'exception', 'open',
+]);
+
 /**
  * Returns the imported theories in the document.
  *
@@ -392,21 +399,30 @@ function findExtFiles(directory: string, ext: string): string[] {
  */
 function getImports(document: vscode.TextDocument): string[] {
     const imports: string[] = [];
-    const importRegex = /^\s*open\s+([^;]+(\s+[^;]+)*?);/mg;
     const text = document.getText();
     const contents = removeComments(text);
+    console.log(contents);
     let match: RegExpExecArray | null;
-    while ((match = importRegex.exec(contents))) {
-        const names = match[1].split(/\s+/);
-        names.forEach((name) => {
+    while (importRegex.exec(contents)) {
+        let lastIndex = identRegex.lastIndex = importRegex.lastIndex;
+        while ((match = identRegex.exec(contents))) {
+            if (match.index != lastIndex) break;
+            lastIndex = identRegex.lastIndex;
+            const name = match[1];
+            if (keywords.has(name)) {
+                if (name == 'open') identRegex.lastIndex = match.index;
+                break;
+            }
             const n = name.match(/(\S+)Theory/);
             if (n) {
                 imports.push(n[1] + 'Script.sml');
             } else {
                 imports.push(name);
             }
-        });
+        }
+        importRegex.lastIndex = identRegex.lastIndex;
     }
+    console.log(imports);
     return imports;
 }
 
@@ -485,11 +501,11 @@ function parseDefinitions(filename: string, contents: string): HOLEntry[] {
         let statement: RegExpExecArray | null;
         if (match[2].includes("Termination") && (statement = termination.exec(match[2]))) {
             entries.push({
-               name: match[1].replace(attributes, ""),
-               statement: statement[1],
-               file: filename,
-               line: contents.slice(0, match.index).split("\n").length,
-               type: "Definition",
+                name: match[1].replace(attributes, ""),
+                statement: statement[1],
+                file: filename,
+                line: contents.slice(0, match.index).split("\n").length,
+                type: "Definition",
             });
         } else {
             entries.push({
