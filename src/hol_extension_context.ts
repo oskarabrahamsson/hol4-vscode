@@ -74,7 +74,7 @@ function getSelection(editor: vscode.TextEditor): string {
 /**
  * Adds a location pragma to the text at the given position.
  */
-function addLocationPragma(text: string, position: vscode.Position) { 
+function addLocationPragma(text: string, position: vscode.Position) {
     const locPragma = positionToLocationPragma(position);
     const trace = '"show_typecheck_errors"';
     const data = [
@@ -277,11 +277,6 @@ export class HOLExtensionContext {
      */
     public terminal?: vscode.Terminal;
 
-    /**
-     * Whether the HOL session is active.
-     */
-    public active = false;
-
     constructor(holPath: string, holIDE?: HOLIDE) {
         this.holPath = holPath;
         this.holIDE = holIDE;
@@ -291,19 +286,19 @@ export class HOLExtensionContext {
      * an error message is printed.
      */
     isActive(): boolean {
-        if (!this.active) {
+        if (!this.holTerminal) {
             vscode.window.showErrorMessage('No active HOL session; doing nothing.');
             error('No active session; doing nothing');
         }
 
-        return this.active;
+        return this.holTerminal !== undefined;
     }
 
     /**
      * Start HOL terminal session.
      */
-    startSession(editor: vscode.TextEditor) {
-        if (this.active) {
+    async startSession(editor: vscode.TextEditor) {
+        if (this.holTerminal !== undefined) {
             vscode.window.showErrorMessage('HOL session already active; doing nothing.');
             error('Session already active; doing nothing');
             return;
@@ -318,15 +313,14 @@ export class HOLExtensionContext {
 
         vscode.window.onDidCloseTerminal((e: vscode.Terminal) => {
             if (e === this.terminal) {
-                this.active = false;
                 this.terminal = undefined;
+                this.holTerminal = undefined;
                 log('Closed terminal; deactivating');
             }
         });
 
         log('Started session');
         this.terminal.show(true);
-        this.active = true;
     }
 
     /**
@@ -339,7 +333,7 @@ export class HOLExtensionContext {
 
         log('Stopped session');
         this.terminal?.dispose();
-        this.active = false;
+        this.holTerminal = undefined;
     }
 
     /**
