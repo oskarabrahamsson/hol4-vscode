@@ -1,8 +1,8 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
-import { HOLIDE } from './hol_ide';
-import { HOLExtensionContext } from './hol_extension_context';
+import { HOLIDE } from './holIDE';
+import { HOLExtensionContext } from './extensionContext';
 import { log, error } from './common';
 
 
@@ -51,8 +51,9 @@ function initialize(): HOLExtensionContext | undefined {
     return new HOLExtensionContext(holPath, holIDE);
 }
 
+let holExtensionContext: HOLExtensionContext | undefined;
 export function activate(context: vscode.ExtensionContext) {
-    const holExtensionContext = initialize();
+    holExtensionContext = initialize();
     if (!holExtensionContext) {
         error("Unable to initialize extension.");
         return;
@@ -64,84 +65,84 @@ export function activate(context: vscode.ExtensionContext) {
         // Start a new HOL4 session.
         // Opens up a terminal and starts HOL4.
         vscode.commands.registerTextEditorCommand('hol4-mode.startSession', (editor) => {
-            holExtensionContext.startSession(editor);
+            holExtensionContext?.startSession(editor);
         }),
 
         // Stop the current session, if any.
         vscode.commands.registerCommand('hol4-mode.stopSession', () => {
-            holExtensionContext.stopSession();
+            holExtensionContext?.stopSession();
         }),
 
         // Interrupt the current session, if any.
         vscode.commands.registerCommand('hol4-mode.interrupt', () => {
-            holExtensionContext.interrupt();
+            holExtensionContext?.interrupt();
         }),
 
         // Send selection to the terminal; preprocess to find `open` and `load`
         // calls.
         vscode.commands.registerTextEditorCommand('hol4-mode.sendSelection', (editor) => {
-            holExtensionContext.sendSelection(editor);
+            holExtensionContext?.sendSelection(editor);
         }),
 
         // Send all text up to and including the current line in the current editor
         // to the terminal.
         vscode.commands.registerTextEditorCommand('hol4-mode.sendUntilCursor', (editor) => {
-            holExtensionContext.sendUntilCursor(editor);
+            holExtensionContext?.sendUntilCursor(editor);
         }),
 
         // Send a goal selection to the terminal.
         vscode.commands.registerTextEditorCommand('hol4-mode.sendGoal', (editor) => {
-            holExtensionContext.sendGoal(editor);
+            holExtensionContext?.sendGoal(editor);
         }),
 
         // Select a term quotation and set it up as a subgoal.
         vscode.commands.registerTextEditorCommand('hol4-mode.sendSubgoal', (editor) => {
-            holExtensionContext.sendSubgoal(editor);
+            holExtensionContext?.sendSubgoal(editor);
         }),
 
         // Send a tactic selection to the terminal.
         vscode.commands.registerTextEditorCommand('hol4-mode.sendTactic', (editor) => {
-            holExtensionContext.sendTactic(editor);
+            holExtensionContext?.sendTactic(editor);
         }),
 
         // Send a tactic line to the terminal.
         vscode.commands.registerTextEditorCommand('hol4-mode.sendTacticLine', (editor) => {
-            holExtensionContext.sendTacticLine(editor);
+            holExtensionContext?.sendTacticLine(editor);
         }),
 
         // Show goal.
         vscode.commands.registerCommand('hol4-mode.proofmanShow', () => {
-            holExtensionContext.showCurrentGoal();
+            holExtensionContext?.showCurrentGoal();
         }),
 
         // Rotate goal.
         vscode.commands.registerCommand('hol4-mode.proofmanRotate', () => {
-            holExtensionContext.rotateGoal();
+            holExtensionContext?.rotateGoal();
         }),
 
         // Step backwards goal.
         vscode.commands.registerCommand('hol4-mode.proofmanBack', () => {
-            holExtensionContext.stepbackGoal();
+            holExtensionContext?.stepbackGoal();
         }),
 
         // Restart goal.
         vscode.commands.registerCommand('hol4-mode.proofmanRestart', () => {
-            holExtensionContext.restartGoal();
+            holExtensionContext?.restartGoal();
         }),
 
         // Drop goal.
         vscode.commands.registerCommand('hol4-mode.proofmanDrop', () => {
-            holExtensionContext.dropGoal();
+            holExtensionContext?.dropGoal();
         }),
 
         // Toggle printing of terms with or without types
         vscode.commands.registerCommand('hol4-mode.toggleShowTypes', () => {
-            holExtensionContext.toggleShowTypes();
+            holExtensionContext?.toggleShowTypes();
         }),
 
         // Toggle printing of theorem assumptions
         vscode.commands.registerCommand('hol4-mode.toggleShowAssums', () => {
-            holExtensionContext.toggleShowAssums();
+            holExtensionContext?.toggleShowAssums();
         }),
 
         // Run Holmake in current directory
@@ -156,23 +157,40 @@ export function activate(context: vscode.ExtensionContext) {
             terminal.show(true);
         }),
 
+        vscode.commands.registerCommand('hol4-mode.clearAll', async () => {
+            await holExtensionContext?.notebook?.clearAll();
+        }),
+
+        vscode.commands.registerCommand('hol4-mode.restart', async () => {
+            await holExtensionContext?.notebook?.stop();
+            await holExtensionContext?.notebook?.start();
+        }),
+
+        vscode.commands.registerCommand('hol4-mode.collapseAllCells', async () => {
+            await holExtensionContext?.notebook?.collapseAll();
+        }),
+
+        vscode.commands.registerCommand('hol4-mode.expandAllCells', async () => {
+            await holExtensionContext?.notebook?.expandAll();
+        }),
+
         // Refresh the import list for the currently active document.
         vscode.window.onDidChangeActiveTextEditor((editor) => {
             if (editor) {
-                holExtensionContext.holIDE?.updateImports(editor.document);
+                holExtensionContext?.holIDE?.updateImports(editor.document);
             }
         }),
 
         vscode.workspace.onDidSaveTextDocument((document) => {
-            holExtensionContext.holIDE?.indexDocument(document);
+            holExtensionContext?.holIDE?.indexDocument(document);
         }),
 
         vscode.commands.registerCommand('hol4-mode.indexWorkspace', () => {
-            holExtensionContext.holIDE?.indexWorkspace();
+            holExtensionContext?.holIDE?.indexWorkspace();
         }),
 
         vscode.commands.registerCommand('hol4-mode.refreshIndex', () => {
-            holExtensionContext.holIDE?.refreshIndex();
+            holExtensionContext?.holIDE?.refreshIndex();
         }),
 
         vscode.languages.registerHoverProvider(
@@ -196,22 +214,23 @@ export function activate(context: vscode.ExtensionContext) {
 
         // HOL IDE commands END
 
-        vscode.languages.registerCompletionItemProvider(hol4selector, {
-            async provideCompletionItems(_document, position, _token, context) {
-                let items = [];
-                let range = new vscode.Range(position.translate(0, -1), position);
-                for (const matchKey in completions) {
-                    let matchVal = completions[matchKey];
-                    let item = new vscode.CompletionItem(context.triggerCharacter + matchKey);
-                    item.kind = vscode.CompletionItemKind.Text;
-                    item.range = range;
-                    item.detail = matchVal;
-                    item.insertText = matchVal;
-                    items.push(item);
+        vscode.languages.registerCompletionItemProvider(hol4selector,
+            {
+                async provideCompletionItems(_document, position, _token, context) {
+                    let items = [];
+                    let range = new vscode.Range(position.translate(0, -1), position);
+                    for (const matchKey in completions) {
+                        let matchVal = completions[matchKey];
+                        let item = new vscode.CompletionItem(context.triggerCharacter + matchKey);
+                        item.kind = vscode.CompletionItemKind.Text;
+                        item.range = range;
+                        item.detail = matchVal;
+                        item.insertText = matchVal;
+                        items.push(item);
+                    }
+                    return items;
                 }
-                return items;
-            }
-        },
+            },
             ...['\\']
         ),
 
@@ -225,4 +244,6 @@ export function activate(context: vscode.ExtensionContext) {
 }
 
 // this method is called when your extension is deactivated
-export function deactivate() { }
+export function deactivate() {
+    holExtensionContext?.stopSession()
+}

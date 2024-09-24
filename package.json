@@ -1,249 +1,324 @@
 {
-	"name": "hol4-mode",
-	"displayName": "HOL4 mode",
-	"description": "A VSCode extension for interacting with the HOL4 theorem prover",
-	"version": "0.0.15",
-	"repository": "https://github.com/oskarabrahamsson/hol4-vscode",
-	"engines": {
-		"vscode": "^1.75.0"
-	},
-	"publisher": "oskarabrahamsson",
-	"categories": [
-		"Programming Languages"
-	],
-	"activationEvents": [
-		"onLanguage:sml"
-	],
-	"main": "./out/extension.js",
-	"contributes": {
-		"grammars": [
-			{
-				"language": "hol4",
-				"scopeName": "source.hol4",
-				"path": "./hol4-grammar.json"
-			}
-		],
-		"languages": [
-			{
-				"id": "hol4",
-				"extensions": [
-					".sml"
-				],
-				"aliases": [
-					"HOL4"
-				],
-				"configuration": "./hol4-language.json",
-				"filenamePatterns": [
-					"*Script.sml"
-				]
-			}
-		],
-		"commands": [
-			{
-				"command": "hol4-mode.startSession",
-				"title": "HOL: Start session"
-			},
-			{
-				"command": "hol4-mode.stopSession",
-				"title": "HOL: Stop session"
-			},
-			{
-				"command": "hol4-mode.interrupt",
-				"title": "HOL: Interrupt HOL process"
-			},
-			{
-				"command": "hol4-mode.sendSelection",
-				"title": "HOL: Send selection"
-			},
-			{
-				"command": "hol4-mode.sendUntilCursor",
-				"title": "HOL: Send all up to current line"
-			},
-			{
-				"command": "hol4-mode.sendGoal",
-				"title": "HOL: Send goal"
-			},
-			{
-				"command": "hol4-mode.sendSubgoal",
-				"title": "HOL: Send subgoal"
-			},
-			{
-				"command": "hol4-mode.sendTactic",
-				"title": "HOL: Send tactic"
-			},
-			{
-				"command": "hol4-mode.sendTacticLine",
-				"title": "HOL: Send tactic line"
-			},
-			{
-				"command": "hol4-mode.proofmanShow",
-				"title": "HOL: Show current goal"
-			},
-			{
-				"command": "hol4-mode.proofmanRotate",
-				"title": "HOL: Rotate between subgoals"
-			},
-			{
-				"command": "hol4-mode.proofmanRestart",
-				"title": "HOL: Restart current goal"
-			},
-			{
-				"command": "hol4-mode.proofmanDrop",
-				"title": "HOL: Drop current goal"
-			},
-			{
-				"command": "hol4-mode.proofmanBack",
-				"title": "HOL: Step backwards in current goal"
-			},
-			{
-				"command": "hol4-mode.indexWorkspace",
-				"title": "HOL: Index workspace for IDE"
-			},
-			{
-				"command": "hol4-mode.refreshIndex",
-				"title": "HOL: Refresh symbol index"
-			},
-			{
-				"command": "hol4-mode.holmake",
-				"title": "HOL: Run Holmake in the directory of the current document"
-			},
-			{
-				"command": "hol4-mode.toggleShowAssums",
-				"title": "HOL: Toggle printing of theorem hypotheses"
-			},
-			{
-				"command": "hol4-mode.toggleShowTypes",
-				"title": "HOL: Toggle printing of term types"
-			}
-		],
-		"keybindings": [
-			{
-				"command": "hol4-mode.startSession",
-				"key": "ctrl+h h",
-				"mac": "cmd+h h",
-				"when": "editorLangId == hol4"
-			},
-			{
-				"command": "hol4-mode.stopSession",
-				"key": "ctrl+h ctrl+x",
-				"mac": "cmd+h cmd+x",
-				"when": "editorLangId == hol4"
-			},
-			{
-				"command": "hol4-mode.interrupt",
-				"key": "ctrl+h ctrl+c",
-				"mac": "cmd+h cmd+c",
-				"when": "editorLangId == hol4"
-			},
-			{
-				"command": "hol4-mode.sendSelection",
-				"key": "ctrl+h s",
-				"mac": "cmd+h s",
-				"when": "editorLangId == hol4"
-			},
-			{
-				"command": "hol4-mode.sendUntilCursor",
-				"key": "ctrl+h ctrl+shift+s",
-				"mac": "cmd+h cmd+shift+s",
-				"when": "editorLangId == hol4"
-			},
-			{
-				"command": "hol4-mode.sendGoal",
-				"key": "ctrl+h g",
-				"mac": "cmd+h g",
-				"when": "editorLangId == hol4"
-			},
-			{
-				"command": "hol4-mode.sendSubgoal",
-				"key": "ctrl+h ctrl+s",
-				"mac": "cmd+h ctrl+s",
-				"when": "editorLangId == hol4"
-			},
-			{
-				"command": "hol4-mode.sendTactic",
-				"key": "ctrl+h e",
-				"mac": "cmd+h e",
-				"when": "editorLangId == hol4"
-			},
-			{
-				"command": "hol4-mode.sendTacticLine",
-				"key": "ctrl+h ctrl+e",
-				"mac": "cmd+h ctrl+e",
-				"when": "editorLangId == hol4"
-			},
-			{
-				"command": "hol4-mode.proofmanShow",
-				"key": "ctrl+h p",
-				"mac": "cmd+h p",
-				"when": "editorLangId == hol4"
-			},
-			{
-				"command": "hol4-mode.proofmanBack",
-				"key": "ctrl+h b",
-				"mac": "cmd+h b",
-				"when": "editorLangId == hol4"
-			},
-			{
-				"command": "hol4-mode.proofmanRestart",
-				"key": "ctrl+h shift+r",
-				"mac": "cmd+h shift+r",
-				"when": "editorLangId == hol4"
-			},
-			{
-				"command": "hol4-mode.proofmanRotate",
-				"key": "ctrl+h r",
-				"mac": "cmd+h r",
-				"when": "editorLangId == hol4"
-			},
-			{
-				"command": "hol4-mode.proofmanDrop",
-				"key": "ctrl+h d",
-				"mac": "cmd+h d",
-				"when": "editorLangId == hol4"
-			},
-			{
-				"command": "hol4-mode.toggleShowTypes",
-				"key": "ctrl+h ctrl+t",
-				"mac": "cmd+h cmd+t",
-				"when": "editorLangId == hol4"
-			},
-			{
-				"command": "hol4-mode.toggleShowAssums",
-				"key": "ctrl+h ctrl+a",
-				"mac": "cmd+h cmd+a",
-				"when": "editorLangId == hol4"
-			}
-		],
-		"configuration": {
-			"title": "HOL4",
-			"properties": {
-				"hol4-mode.indexing": {
-					"type": "boolean",
-					"default": "true",
-					"description": "Enable indexing of symbols"
-				}
-			}
-		}
-	},
-	"scripts": {
-		"vscode:prepublish": "npm run compile",
-		"compile": "tsc -p ./",
-		"watch": "tsc -watch -p ./",
-		"pretest": "npm run compile && npm run lint",
-		"lint": "eslint src --ext ts",
-		"test": "node ./out/test/runTest.js"
-	},
-	"devDependencies": {
-		"@types/vscode": "^1.63.0",
-		"@types/glob": "^7.2.0",
-		"@types/mocha": "^9.0.0",
-		"@types/node": "14.x",
-		"@typescript-eslint/eslint-plugin": "^5.9.1",
-		"@typescript-eslint/parser": "^5.9.1",
-		"eslint": "^8.6.0",
-		"glob": "^7.2.0",
-		"mocha": "^9.1.3",
-		"typescript": "^4.5.4",
-		"@vscode/test-electron": "^2.0.3"
-	}
+    "name": "hol4-mode",
+    "displayName": "HOL4 mode",
+    "description": "A VSCode extension for interacting with the HOL4 theorem prover",
+    "version": "0.0.15",
+    "repository": "https://github.com/oskarabrahamsson/hol4-vscode",
+    "engines": {
+        "vscode": "^1.75.0"
+    },
+    "publisher": "oskarabrahamsson",
+    "categories": [
+        "Programming Languages"
+    ],
+    "activationEvents": [
+        "onLanguage:sml"
+    ],
+    "main": "./out/extension.js",
+    "contributes": {
+        "grammars": [
+            {
+                "language": "hol4",
+                "scopeName": "source.hol4",
+                "path": "./hol4-grammar.json"
+            }
+        ],
+        "languages": [
+            {
+                "id": "hol4",
+                "extensions": [
+                    ".sml"
+                ],
+                "aliases": [
+                    "HOL4"
+                ],
+                "configuration": "./hol4-language.json",
+                "filenamePatterns": [
+                    "*Script.sml"
+                ]
+            }
+        ],
+        "commands": [
+            {
+                "command": "hol4-mode.startSession",
+                "title": "Start session",
+                "category": "HOL"
+            },
+            {
+                "command": "hol4-mode.stopSession",
+                "title": "Stop session",
+                "category": "HOL"
+            },
+            {
+                "command": "hol4-mode.interrupt",
+                "title": "Interrupt HOL process",
+                "category": "HOL"
+            },
+            {
+                "command": "hol4-mode.sendSelection",
+                "title": "Send selection",
+                "category": "HOL"
+            },
+            {
+                "command": "hol4-mode.sendUntilCursor",
+                "title": "Send all up to current line",
+                "category": "HOL"
+            },
+            {
+                "command": "hol4-mode.sendGoal",
+                "title": "Send goal",
+                "category": "HOL"
+            },
+            {
+                "command": "hol4-mode.sendSubgoal",
+                "title": "Send subgoal",
+                "category": "HOL"
+            },
+            {
+                "command": "hol4-mode.sendTactic",
+                "title": "Send tactic",
+                "category": "HOL"
+            },
+            {
+                "command": "hol4-mode.sendTacticLine",
+                "title": "Send tactic line",
+                "category": "HOL"
+            },
+            {
+                "command": "hol4-mode.proofmanShow",
+                "title": "Show current goal",
+                "category": "HOL"
+            },
+            {
+                "command": "hol4-mode.proofmanRotate",
+                "title": "Rotate between subgoals",
+                "category": "HOL"
+            },
+            {
+                "command": "hol4-mode.proofmanRestart",
+                "title": "Restart current goal",
+                "category": "HOL"
+            },
+            {
+                "command": "hol4-mode.proofmanDrop",
+                "title": "Drop current goal",
+                "category": "HOL"
+            },
+            {
+                "command": "hol4-mode.proofmanBack",
+                "title": "Step backwards in current goal",
+                "category": "HOL"
+            },
+            {
+                "command": "hol4-mode.indexWorkspace",
+                "title": "Index workspace for IDE",
+                "category": "HOL"
+            },
+            {
+                "command": "hol4-mode.refreshIndex",
+                "title": "Refresh symbol index",
+                "category": "HOL"
+            },
+            {
+                "command": "hol4-mode.holmake",
+                "title": "Run Holmake in the directory of the current document",
+                "category": "HOL"
+            },
+            {
+                "command": "hol4-mode.toggleShowAssums",
+                "title": "Toggle printing of theorem hypotheses",
+                "category": "HOL"
+            },
+            {
+                "command": "hol4-mode.toggleShowTypes",
+                "title": "Toggle printing of term types",
+                "category": "HOL"
+            },
+            {
+                "command": "hol4-mode.clearAll",
+                "title": "Clear history",
+                "icon": "$(close)",
+                "category": "HOL"
+            },
+            {
+                "command": "hol4-mode.restart",
+                "title": "Restart session",
+                "icon": {
+                    "light": "resources/light/interrupt.svg",
+                    "dark": "resources/dark/interrupt.svg"
+                },
+                "category": "HOL"
+            },
+            {
+                "command": "hol4-mode.expandAllCells",
+                "title": "Expand all cells",
+                "icon": "$(expand-all)",
+                "category": "HOL"
+            },
+            {
+                "command": "hol4-mode.collapseAllCells",
+                "title": "Collapse all cells",
+                "icon": "$(collapse-all)",
+                "category": "HOL"
+            }
+        ],
+        "keybindings": [
+            {
+                "command": "hol4-mode.startSession",
+                "key": "ctrl+h h",
+                "mac": "cmd+h h",
+                "when": "editorLangId == hol4"
+            },
+            {
+                "command": "hol4-mode.stopSession",
+                "key": "ctrl+h ctrl+x",
+                "mac": "cmd+h cmd+x",
+                "when": "editorLangId == hol4"
+            },
+            {
+                "command": "hol4-mode.interrupt",
+                "key": "ctrl+h ctrl+c",
+                "mac": "cmd+h cmd+c",
+                "when": "editorLangId == hol4"
+            },
+            {
+                "command": "hol4-mode.sendSelection",
+                "key": "ctrl+h s",
+                "mac": "cmd+h s",
+                "when": "editorLangId == hol4"
+            },
+            {
+                "command": "hol4-mode.sendUntilCursor",
+                "key": "ctrl+h ctrl+shift+s",
+                "mac": "cmd+h cmd+shift+s",
+                "when": "editorLangId == hol4"
+            },
+            {
+                "command": "hol4-mode.sendGoal",
+                "key": "ctrl+h g",
+                "mac": "cmd+h g",
+                "when": "editorLangId == hol4"
+            },
+            {
+                "command": "hol4-mode.sendSubgoal",
+                "key": "ctrl+h ctrl+s",
+                "mac": "cmd+h ctrl+s",
+                "when": "editorLangId == hol4"
+            },
+            {
+                "command": "hol4-mode.sendTactic",
+                "key": "ctrl+h e",
+                "mac": "cmd+h e",
+                "when": "editorLangId == hol4"
+            },
+            {
+                "command": "hol4-mode.sendTacticLine",
+                "key": "ctrl+h ctrl+e",
+                "mac": "cmd+h ctrl+e",
+                "when": "editorLangId == hol4"
+            },
+            {
+                "command": "hol4-mode.proofmanShow",
+                "key": "ctrl+h p",
+                "mac": "cmd+h p",
+                "when": "editorLangId == hol4"
+            },
+            {
+                "command": "hol4-mode.proofmanBack",
+                "key": "ctrl+h b",
+                "mac": "cmd+h b",
+                "when": "editorLangId == hol4"
+            },
+            {
+                "command": "hol4-mode.proofmanRestart",
+                "key": "ctrl+h shift+r",
+                "mac": "cmd+h shift+r",
+                "when": "editorLangId == hol4"
+            },
+            {
+                "command": "hol4-mode.proofmanRotate",
+                "key": "ctrl+h r",
+                "mac": "cmd+h r",
+                "when": "editorLangId == hol4"
+            },
+            {
+                "command": "hol4-mode.proofmanDrop",
+                "key": "ctrl+h d",
+                "mac": "cmd+h d",
+                "when": "editorLangId == hol4"
+            },
+            {
+                "command": "hol4-mode.toggleShowTypes",
+                "key": "ctrl+h ctrl+t",
+                "mac": "cmd+h cmd+t",
+                "when": "editorLangId == hol4"
+            },
+            {
+                "command": "hol4-mode.toggleShowAssums",
+                "key": "ctrl+h ctrl+a",
+                "mac": "cmd+h cmd+a",
+                "when": "editorLangId == hol4"
+            }
+        ],
+        "menus": {
+            "interactive/toolbar": [
+                {
+                    "command": "hol4-mode.clearAll",
+                    "group": "navigation@0",
+                    "when": "notebookKernel == 'oskarabrahamsson.hol4-mode/hol4'"
+                },
+                {
+                    "command": "hol4-mode.restart",
+                    "group": "navigation@1",
+                    "when": "notebookKernel == 'oskarabrahamsson.hol4-mode/hol4'"
+                },
+                {
+                    "command": "hol4-mode.expandAllCells",
+                    "group": "navigation@2",
+                    "when": "notebookKernel == 'oskarabrahamsson.hol4-mode/hol4'"
+                },
+                {
+                    "command": "hol4-mode.collapseAllCells",
+                    "group": "navigation@3",
+                    "when": "notebookKernel == 'oskarabrahamsson.hol4-mode/hol4'"
+                }
+            ]
+        },
+        "configuration": {
+            "title": "HOL4",
+            "properties": {
+                "hol4-mode.indexing": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Enable indexing of symbols"
+                },
+                "hol4-mode.rawMessages": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Show raw input/output in console view"
+                }
+            }
+        }
+    },
+    "scripts": {
+        "vscode:prepublish": "npm run compile",
+        "compile": "tsc -p ./",
+        "watch": "tsc -watch -p ./",
+        "pretest": "npm run compile && npm run lint",
+        "lint": "eslint src --ext ts",
+        "test": "node ./out/test/runTest.js"
+    },
+    "devDependencies": {
+        "@types/vscode": "^1.63.0",
+        "@types/glob": "^7.2.0",
+        "@types/mocha": "^9.0.0",
+        "@types/node": "14.x",
+        "@typescript-eslint/eslint-plugin": "^5.9.1",
+        "@typescript-eslint/parser": "^5.9.1",
+        "eslint": "^8.6.0",
+        "glob": "^7.2.0",
+        "mocha": "^9.1.3",
+        "typescript": "^4.5.4",
+        "@vscode/test-electron": "^2.0.3"
+    }
 }
