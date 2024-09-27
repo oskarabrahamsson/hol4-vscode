@@ -44,8 +44,18 @@ function initialize(): HOLExtensionContext | undefined {
     }
 
     let holIDE;
-    if (vscode.workspace.getConfiguration('hol4-mode').get('indexing')) {
-        holIDE = new HOLIDE();
+    if (vscode.workspace.getConfiguration('hol4-mode').get('indexing')
+        && vscode.workspace.workspaceFolders?.length) {
+        // Get the path to the current workspace root. This class is constructed
+        // by the extension, which is activated by opening a HOL4 document. By
+        // this time there should be a workspace.
+        if (vscode.workspace.workspaceFolders.length == 1) {
+            const workspacePath = vscode.workspace.workspaceFolders[0].uri.fsPath;
+            holIDE = new HOLIDE(workspacePath);
+        } else {
+            vscode.window.showErrorMessage('HOL4 mode: multi-root workspaces not supported');
+            error('workspace has too many roots');
+        }
     }
 
     return new HOLExtensionContext(holPath, holIDE);

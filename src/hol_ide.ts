@@ -105,18 +105,16 @@ export class HOLIDE {
      */
     private externalIndex: HOLEntry[] = [];
 
-    constructor() {
-        // Get the path to the current workspace root. This class is constructed
-        // by the extension, which is activated by opening a HOL4 document. By
-        // this time there should be a workspace.
-        const workspacePath = vscode.workspace.workspaceFolders![0].uri.fsPath;
-
+    constructor(
+        /** the path to the current workspace root */
+        private workspaceDir: string
+    ) {
         // Read the entry-index in the workspace database.
         //
         // The first time a user opens a new workspace there generally won't be
         // an existing database. If this is the case, query the user about
         // refreshing the database, and then resume as if the index was empty.
-        let index = readDatabase(workspacePath);
+        let index = readDatabase(workspaceDir);
         this.workspaceIndex = index ? index : [];
 
         if (!index) {
@@ -130,7 +128,7 @@ export class HOLIDE {
         // add those entries to `this.externalIndex`. Those paths for which
         // we can't find any entries are added to `unindexed`.
         const unindexed: string[] = [];
-        readDependencies(workspacePath).forEach((depPath) => {
+        readDependencies(workspaceDir).forEach((depPath) => {
             const entries = readDatabase(depPath);
             if (entries) {
                 entries.forEach((entry) => {
@@ -177,8 +175,7 @@ export class HOLIDE {
      * Refresh the index entries for all files in the workspace.
      */
     indexWorkspace() {
-        const workspacePath = vscode.workspace.workspaceFolders![0].uri.fsPath;
-        let scripts: string[] = findExtFiles(workspacePath, "Script.sml");
+        let scripts: string[] = findExtFiles(this.workspaceDir, "Script.sml");
         this.updateWorkspaceIndex(scripts);
     }
 
@@ -194,9 +191,8 @@ export class HOLIDE {
      * @param files Paths to files to refresh the index for.
      */
     private updateWorkspaceIndex(files: string[]) {
-        const workspacePath = vscode.workspace.workspaceFolders![0].uri.fsPath;
         // If the database directory doesn't exist, then create it:
-        const outputDir = path.join(workspacePath, databaseDir);
+        const outputDir = path.join(this.workspaceDir, databaseDir);
         if (!fs.existsSync(outputDir)) {
             fs.mkdirSync(outputDir);
         }
@@ -221,12 +217,12 @@ export class HOLIDE {
      * {@link databaseDir}/entries.json file. Returns a list of updated entries.
      *
      * @param files The files
-     * @param workspacePath The directory where the database should be stored.
+     * @param dir The directory where the database should be stored.
      * @returns
      */
-    private indexDep(files: string[], workspacePath: string): HOLEntry[] {
+    private indexDep(files: string[], dir: string): HOLEntry[] {
         // If the database directory does not exist, then create it:
-        const outputDir = path.join(workspacePath, databaseDir);
+        const outputDir = path.join(dir, databaseDir);
         if (!fs.existsSync(outputDir)) {
             fs.mkdirSync(outputDir);
         }
@@ -268,8 +264,7 @@ export class HOLIDE {
     refreshIndex() {
         this.indexWorkspace();
 
-        const workspaceDir = vscode.workspace.workspaceFolders![0].uri.fsPath;
-        this.updateDependencyIndex(readDependencies(workspaceDir));
+        this.updateDependencyIndex(readDependencies(this.workspaceDir));
     }
 
     updateImports(document: vscode.TextDocument) {
