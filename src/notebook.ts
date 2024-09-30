@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
-import { HolKernel } from './kernel';
-import { disallowConcurrency, error } from './common';
+import { HolKernel, OverflowEvent } from './kernel';
+import { error } from './common';
 
 function getRanges<T>(arr: T[], f: (t: T) => boolean): { start: number, end: number }[] {
     let ranges: { start: number, end: number }[] = [];
@@ -33,6 +33,8 @@ export class HolNotebook {
     /** The kernel connection. */
     public kernel: HolKernel;
 
+    private overflowPromise: Promise<void>;
+
     constructor(
         private readonly cwd: string,
         private readonly holPath: string,
@@ -42,68 +44,75 @@ export class HolNotebook {
         this.kernel.controller.updateNotebookAffinity(
             this.editor.notebook, vscode.NotebookControllerAffinity.Preferred);
         this.kernel.onWillExec(cell => this.outputCell = cell.index + 1);
-        this.kernel.onOverflow(disallowConcurrency(async ({ s, err }) => {
-            if (!s) return;
-            const edit = new vscode.WorkspaceEdit();
-            // Creating a new cell is so ugly, but the below code does not really work :(
-            //-----------
-            // let hasCode: vscode.NotebookCell | undefined;
-            // let hasMarkupCode: vscode.TextDocument | undefined;
-            // if (this.outputCell !== undefined) {
-            //     const cell = this.editor.notebook.cellAt(this.outputCell);
-            //     if (cell.kind == vscode.NotebookCellKind.Code) {
-            //         hasCode = cell;
-            //     } else if (cell.kind == vscode.NotebookCellKind.Markup && cell.metadata.code) {
-            //         hasMarkupCode = cell.document;
-            //     }
-            // }
-            // if (hasMarkupCode) {
-            //     edit.set(hasMarkupCode.uri, [
-            //         vscode.TextEdit.insert(new vscode.Position(hasMarkupCode.lineCount, 0), s)
-            //     ]);
-            //     await vscode.workspace.applyEdit(edit);
-            // } else if (hasCode) {
-            //     const index = this.outputCell;
-            //     const item: vscode.NotebookCellOutputItem = err ?
-            //         vscode.NotebookCellOutputItem.stderr(s) :
-            //         vscode.NotebookCellOutputItem.stdout(s);
-            //     let executionSummary: vscode.NotebookCellExecutionSummary | undefined;
-            //     if (hasCode.executionSummary) {
-            //         const timing = hasCode.executionSummary.timing
-            //             ? { startTime: hasCode.executionSummary.timing.startTime, endTime: date }
-            //             : undefined;
-            //         executionSummary = {
-            //             executionOrder: hasCode.executionSummary.executionOrder,
-            //             success: hasCode.executionSummary.success,
-            //             timing
-            //         }
-            //     }
-            //     const outputs = [...hasCode.outputs, new vscode.NotebookCellOutput([item])];
-            //     const data: vscode.NotebookCellData = {
-            //         kind: vscode.NotebookCellKind.Code,
-            //         value: hasCode.document.getText(),
-            //         languageId: hasCode.document.languageId,
-            //         outputs,
-            //         metadata: hasCode.metadata,
-            //         executionSummary,
-            //     };
-            //     edit.set(this.editor.notebook.uri, [
-            //         vscode.NotebookEdit.replaceCells(new vscode.NotebookRange(index, index + 1), [data])
-            //     ]);
-            //     this.outputCell = index;
-            // } else {
-            const data = new vscode.NotebookCellData(vscode.NotebookCellKind.Markup, s, 'hol4');
-            data.metadata = { code: true };
-            edit.set(this.editor.notebook.uri, [
-                vscode.NotebookEdit.insertCells(this.outputCell, [data])
-            ]);
-            this.outputCell++;
-            await vscode.workspace.applyEdit(edit);
-        }));
+        this.overflowPromise = Promise.resolve();
+        this.kernel.onOverflow((e) => {
+            this.overflowPromise = this.overflowPromise.then(() => this.handleOverflow(e));
+            return this.overflowPromise
+        });
     }
 
-    start() {
-        this.kernel.start();
+    private async handleOverflow({ s, err }: OverflowEvent) {
+        if (!s) return;
+        const edit = new vscode.WorkspaceEdit();
+        // Creating a new cell is so ugly, but the below code does not really work :(
+        //-----------
+        // let hasCode: vscode.NotebookCell | undefined;
+        // let hasMarkupCode: vscode.TextDocument | undefined;
+        // if (this.outputCell !== undefined) {
+        //     const cell = this.editor.notebook.cellAt(this.outputCell);
+        //     if (cell.kind == vscode.NotebookCellKind.Code) {
+        //         hasCode = cell;
+        //     } else if (cell.kind == vscode.NotebookCellKind.Markup && cell.metadata.code) {
+        //         hasMarkupCode = cell.document;
+        //     }
+        // }
+        // if (hasMarkupCode) {
+        //     edit.set(hasMarkupCode.uri, [
+        //         vscode.TextEdit.insert(new vscode.Position(hasMarkupCode.lineCount, 0), s)
+        //     ]);
+        //     await vscode.workspace.applyEdit(edit);
+        // } else if (hasCode) {
+        //     const index = this.outputCell;
+        //     const item: vscode.NotebookCellOutputItem = err ?
+        //         vscode.NotebookCellOutputItem.stderr(s) :
+        //         vscode.NotebookCellOutputItem.stdout(s);
+        //     let executionSummary: vscode.NotebookCellExecutionSummary | undefined;
+        //     if (hasCode.executionSummary) {
+        //         const timing = hasCode.executionSummary.timing
+        //             ? { startTime: hasCode.executionSummary.timing.startTime, endTime: date }
+        //             : undefined;
+        //         executionSummary = {
+        //             executionOrder: hasCode.executionSummary.executionOrder,
+        //             success: hasCode.executionSummary.success,
+        //             timing
+        //         }
+        //     }
+        //     const outputs = [...hasCode.outputs, new vscode.NotebookCellOutput([item])];
+        //     const data: vscode.NotebookCellData = {
+        //         kind: vscode.NotebookCellKind.Code,
+        //         value: hasCode.document.getText(),
+        //         languageId: hasCode.document.languageId,
+        //         outputs,
+        //         metadata: hasCode.metadata,
+        //         executionSummary,
+        //     };
+        //     edit.set(this.editor.notebook.uri, [
+        //         vscode.NotebookEdit.replaceCells(new vscode.NotebookRange(index, index + 1), [data])
+        //     ]);
+        //     this.outputCell = index;
+        // } else {
+        const data = new vscode.NotebookCellData(vscode.NotebookCellKind.Markup, s, 'hol4');
+        data.metadata = { code: true };
+        edit.set(this.editor.notebook.uri, [
+            vscode.NotebookEdit.insertCells(this.outputCell, [data])
+        ]);
+        this.outputCell++;
+        await vscode.workspace.applyEdit(edit);
+    }
+
+    async start() {
+        await this.kernel.start();
+        await this.overflowPromise;
     }
 
     async stop() {

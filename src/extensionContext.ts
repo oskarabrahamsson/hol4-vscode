@@ -325,13 +325,12 @@ export class HOLExtensionContext implements vscode.CompletionItemProvider {
             edit.set(notebookEditor.notebook.uri, [
                 vscode.NotebookEdit.updateNotebookMetadata({ hol: true })
             ]);
-            await vscode.workspace.applyEdit(edit);
+            vscode.workspace.applyEdit(edit);
         }
-        await vscode.commands.executeCommand('notebook.selectKernel',
+        vscode.commands.executeCommand('notebook.selectKernel',
             { notebookEditor, id: KERNEL_ID, extension: EXTENSION_ID }
         );
         this.notebook = new HolNotebook(docPath, this.holPath, notebookEditor);
-        await this.notebook.start();
 
         vscode.window.tabGroups.onDidChangeTabGroups((e) => {
             if (e.closed && notebookEditor.notebook.isClosed) {
@@ -346,8 +345,9 @@ export class HOLExtensionContext implements vscode.CompletionItemProvider {
             }
         });
 
-        log('Started session');
         this.notebook.show();
+        await this.notebook.start();
+        log('Started session');
     }
 
     /**
@@ -387,16 +387,17 @@ export class HOLExtensionContext implements vscode.CompletionItemProvider {
      * Send selection to the terminal; preprocess to find `open` and `load`
      * calls.
      */
-    sendSelection(editor: vscode.TextEditor) {
-        if (!this.isActive()) {
-            return;
+    async sendSelection(editor: vscode.TextEditor) {
+        this.sync();
+        if (!this.notebook?.kernel.running) {
+            await this.startSession(editor);
         }
 
         const text = getSelection(editor);
         let full = processOpens(text);
         full = addLocationPragma(full, editor.selection.start);
 
-        this.notebook!.send(text, true, full);
+        await this.notebook!.send(text, true, full);
     }
 
 
@@ -417,15 +418,16 @@ export class HOLExtensionContext implements vscode.CompletionItemProvider {
         let full = processOpens(text);
         full = addLocationPragma(full, selection.start);
 
-        this.notebook!.send(text, true, full);
+        await this.notebook!.send(text, true, full);
     }
 
     /**
      * Send a goal selection to the terminal.
      */
-    sendGoal(editor: vscode.TextEditor) {
-        if (!this.isActive()) {
-            return;
+    async sendGoal(editor: vscode.TextEditor) {
+        this.sync();
+        if (!this.notebook?.kernel.running) {
+            await this.startSession(editor);
         }
 
         let goal = extractGoal(editor);
@@ -438,13 +440,13 @@ export class HOLExtensionContext implements vscode.CompletionItemProvider {
         const faketext = `proofManagerLib.g(\`${text}\`)`;
         const realtext = `proofManagerLib.g(\`${locPragma}${text}\`)`;
         const full = `let val x = ${realtext}; val _ = proofManagerLib.set_backup 100 in x end`
-        this.notebook!.send(faketext, true, full);
+        await this.notebook!.send(faketext, true, full);
     }
 
     /**
      * Select a term quotation and set it up as a subgoal.
      */
-    sendSubgoal(editor: vscode.TextEditor) {
+    async sendSubgoal(editor: vscode.TextEditor) {
         if (!this.isActive()) {
             return;
         }
@@ -458,13 +460,13 @@ export class HOLExtensionContext implements vscode.CompletionItemProvider {
         let [locPragma, text] = sg;
         const faketext = `proofManagerLib.e(sg\`${text}\`)`;
         const realtext = `proofManagerLib.e(sg\`${locPragma}${text}\`)`;
-        this.notebook!.send(faketext, true, realtext);
+        await this.notebook!.send(faketext, true, realtext);
     }
 
     /**
      * Send a tactic to the terminal.
      */
-    sendTactic(editor: vscode.TextEditor) {
+    async sendTactic(editor: vscode.TextEditor) {
         if (!this.isActive()) {
             return;
         }
@@ -474,14 +476,14 @@ export class HOLExtensionContext implements vscode.CompletionItemProvider {
         const text = `proofManagerLib.e(${tacticText})`;
         const full = addLocationPragma(text, editor.selection.start);
 
-        this.notebook!.send(text, true, full);
+        await this.notebook!.send(text, true, full);
     }
 
 
     /**
      * Send a tactic line to the terminal.
      */
-    sendTacticLine(editor: vscode.TextEditor) {
+    async sendTacticLine(editor: vscode.TextEditor) {
         if (!this.isActive()) {
             return;
         }
@@ -491,84 +493,84 @@ export class HOLExtensionContext implements vscode.CompletionItemProvider {
         const text = `proofManagerLib.e(${tacticText})`;
         const full = addLocationPragma(text, editor.selection.start);
 
-        this.notebook!.send(text, true, full);
+        await this.notebook!.send(text, true, full);
     }
 
     /**
      * Show current goal.
      */
-    showCurrentGoal() {
+    async showCurrentGoal() {
         if (!this.isActive()) {
             return;
         }
 
-        this.notebook!.send('proofManagerLib.p ()', true);
+        await this.notebook!.send('proofManagerLib.p ()', true);
     }
 
 
     /**
      * Rotate goal.
      */
-    rotateGoal() {
+    async rotateGoal() {
         if (!this.isActive()) {
             return;
         }
 
-        this.notebook!.send('proofManagerLib.rotate 1', true);
+        await this.notebook!.send('proofManagerLib.rotate 1', true);
     }
 
     /**
      * Step backwards goal.
      */
-    stepbackGoal() {
+    async stepbackGoal() {
         if (!this.isActive()) {
             return;
         }
 
-        this.notebook!.send('proofManagerLib.backup ()', true);
+        await this.notebook!.send('proofManagerLib.backup ()', true);
     }
 
     /**
      * Restart goal.
      */
-    restartGoal() {
+    async restartGoal() {
         if (!this.isActive()) {
             return;
         }
 
-        this.notebook!.send('proofManagerLib.restart ()', true);
+        await this.notebook!.send('proofManagerLib.restart ()', true);
     }
 
     /**
      * Drop goal.
      */
-    dropGoal() {
+    async dropGoal() {
         if (!this.isActive()) {
             return;
         }
 
-        this.notebook!.send('proofManagerLib.drop ()', true);
+        await this.notebook!.send('proofManagerLib.drop ()', true);
     }
 
     /**
      * Toggle printing of terms with or without types.
      */
-    toggleShowTypes() {
+    async toggleShowTypes() {
         if (!this.isActive()) {
             return;
         }
 
-        this.notebook!.send('Globals.show_types := not (!Globals.show_types)', true);
+        await this.notebook!.send('Globals.show_types := not (!Globals.show_types)', true);
     }
 
     /**
      * Toggle printing of theorem hypotheses.
      */
-    toggleShowAssums() {
+    async toggleShowAssums() {
         if (!this.isActive()) {
             return;
         }
-        this.notebook!.send('Globals.show_assums := not (!Globals.show_assums)', true);
+        await this.notebook!.send('Globals.show_assums := not (!Globals.show_assums)', true);
     }
 
     /**

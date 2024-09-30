@@ -146,7 +146,7 @@ export class HolKernel {
     onOverflow = this.overflowListener.event;
     onWillExec = this.execListener.event;
 
-    start() {
+    start(): Promise<void> {
         this.child = child_process.spawn(path.join(this.holPath!, 'bin', 'hol'), ['--zero'], {
             // eslint-disable-next-line @typescript-eslint/naming-convention
             env: { ...process.env, ...{ 'TERM': 'xterm' } },
@@ -154,30 +154,35 @@ export class HolKernel {
             detached: true,
         });
         this.executionOrder = 0;
-        const buffer: string[] = [];
-        const listenerStderr = (data: Buffer) => {
-            if (data.length) {
-                buffer.push(data.toString());
-                this.overflowListener.fire({ s: buffer.join(''), err: true });
-                buffer.length = 0;
-            }
-        };
-        const listenerStdout = (data: Buffer) => {
-            if (!data.length) return;
-            if (data.readUint8(data.length - 1) === 0) {
-                buffer.push(data.toString(undefined, undefined, data.length - 1));
-                this.child?.stdout?.off('data', listenerStdout);
-                this.child?.stderr?.off('data', listenerStderr);
-                this.finishOpen(buffer.join(''));
-            } else {
-                buffer.push(data.toString());
-            }
-        }
-        this.child.stdout?.on('data', listenerStdout);
-        this.child.stderr?.on('data', listenerStderr);
         this.child.addListener('disconnect', this.cancelAll.bind(this));
         this.child.addListener('close', this.cancelAll.bind(this));
         this.child.addListener('exit', this.cancelAll.bind(this));
+        return new Promise((resolve, reject) => {
+            const buffer: string[] = [];
+            const listenerStderr = (data: Buffer) => {
+                if (data.length) {
+                    buffer.push(data.toString());
+                    const s = buffer.join('');
+                    this.overflowListener.fire({ s, err: true });
+                    buffer.length = 0;
+                    reject(s)
+                }
+            };
+            const listenerStdout = (data: Buffer) => {
+                if (!data.length) return;
+                if (data.readUint8(data.length - 1) === 0) {
+                    buffer.push(data.toString(undefined, undefined, data.length - 1));
+                    this.child?.stdout?.off('data', listenerStdout);
+                    this.child?.stderr?.off('data', listenerStderr);
+                    this.finishOpen(buffer.join(''));
+                    resolve()
+                } else {
+                    buffer.push(data.toString());
+                }
+            }
+            this.child?.stdout?.on('data', listenerStdout);
+            this.child?.stderr?.on('data', listenerStderr);
+        })
     }
 
     private appendOutput(str: string, err?: boolean) {
