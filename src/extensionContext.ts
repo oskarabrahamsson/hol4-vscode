@@ -297,53 +297,54 @@ export class HOLExtensionContext implements vscode.CompletionItemProvider {
         }
 
         if (this.notebook) {
-            this.notebook.close();
-        }
-        let docPath = path.dirname(editor.document.uri.fsPath);
-        let notebookEditor = vscode.window.visibleNotebookEditors.find(e => {
-            return e.notebook.metadata.hol || (
-                // Heuristic identification of orphaned HOL windows
-                e.notebook.isUntitled &&
-                e.notebook.cellCount == 0 &&
-                e.notebook.notebookType == 'interactive'
-            )
-        });
-        if (!notebookEditor) {
-            const result = await vscode.commands.executeCommand<{ notebookEditor?: vscode.NotebookEditor }>(
-                'interactive.open',
-                { viewColumn: vscode.ViewColumn.Beside, preserveFocus: false },
-                undefined,
-                KERNEL_ID,
-                'HOL4 Session'
+            this.notebook.stop();
+        } else {
+            let docPath = path.dirname(editor.document.uri.fsPath);
+            let notebookEditor = vscode.window.visibleNotebookEditors.find(e => {
+                return e.notebook.metadata.hol || (
+                    // Heuristic identification of orphaned HOL windows
+                    e.notebook.isUntitled &&
+                    e.notebook.cellCount == 0 &&
+                    e.notebook.notebookType == 'interactive'
+                )
+            });
+            if (!notebookEditor) {
+                const result = await vscode.commands.executeCommand<{ notebookEditor?: vscode.NotebookEditor }>(
+                    'interactive.open',
+                    { viewColumn: vscode.ViewColumn.Beside, preserveFocus: false },
+                    undefined,
+                    KERNEL_ID,
+                    'HOL4 Session'
+                );
+                if (!result.notebookEditor) {
+                    error('vscode notebook failed to start');
+                    return;
+                }
+                notebookEditor = result.notebookEditor;
+                const edit = new vscode.WorkspaceEdit();
+                edit.set(notebookEditor.notebook.uri, [
+                    vscode.NotebookEdit.updateNotebookMetadata({ hol: true })
+                ]);
+                vscode.workspace.applyEdit(edit);
+            }
+            vscode.commands.executeCommand('notebook.selectKernel',
+                { notebookEditor, id: KERNEL_ID, extension: EXTENSION_ID }
             );
-            if (!result.notebookEditor) {
-                error('vscode notebook failed to start');
-                return;
-            }
-            notebookEditor = result.notebookEditor;
-            const edit = new vscode.WorkspaceEdit();
-            edit.set(notebookEditor.notebook.uri, [
-                vscode.NotebookEdit.updateNotebookMetadata({ hol: true })
-            ]);
-            vscode.workspace.applyEdit(edit);
-        }
-        vscode.commands.executeCommand('notebook.selectKernel',
-            { notebookEditor, id: KERNEL_ID, extension: EXTENSION_ID }
-        );
-        this.notebook = new HolNotebook(docPath, this.holPath, notebookEditor);
+            this.notebook = new HolNotebook(docPath, this.holPath, notebookEditor);
 
-        vscode.window.tabGroups.onDidChangeTabGroups((e) => {
-            if (e.closed && notebookEditor.notebook.isClosed) {
-                this.notebook?.dispose();
-                this.notebook = undefined;
-            }
-        });
-        vscode.window.tabGroups.onDidChangeTabs((e) => {
-            if (e.closed && notebookEditor.notebook.isClosed) {
-                this.notebook?.dispose();
-                this.notebook = undefined;
-            }
-        });
+            vscode.window.tabGroups.onDidChangeTabGroups((e) => {
+                if (e.closed && notebookEditor.notebook.isClosed) {
+                    this.notebook?.dispose();
+                    this.notebook = undefined;
+                }
+            });
+            vscode.window.tabGroups.onDidChangeTabs((e) => {
+                if (e.closed && notebookEditor.notebook.isClosed) {
+                    this.notebook?.dispose();
+                    this.notebook = undefined;
+                }
+            });
+        }
 
         this.notebook.show();
         await this.notebook.start();

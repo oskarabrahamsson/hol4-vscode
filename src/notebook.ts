@@ -120,7 +120,7 @@ export class HolNotebook {
     }
 
     async send(s: string, collapsed?: boolean, fullContent?: string) {
-        if (!this.kernel) {
+        if (!this.kernel.running) {
             error('no active session');
             return;
         }

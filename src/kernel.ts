@@ -1,8 +1,7 @@
 import * as vscode from 'vscode';
 import * as child_process from 'child_process';
 import * as path from 'path';
-import { error, KERNEL_ID, log } from './common';
-import { Readable } from 'stream';
+import { error, KERNEL_ID } from './common';
 
 class Execution {
     private buffer: string = '';
@@ -115,6 +114,8 @@ export class HolKernel {
             this.executionQueue.push(cell);
             return;
         }
+
+        this.sync();
         this.currentExecution = new Execution(this.controller.createNotebookCellExecution(cell));
         this.execListener.fire(cell);
 
@@ -240,7 +241,7 @@ export class HolKernel {
     }
 
     sync() {
-        if (this.child && (this.child.killed || !this.child.connected)) {
+        if (this.child && (this.child.killed || !this.child.pid || this.child?.exitCode != null)) {
             this.cancelAll();
             this.child = undefined;
         }
