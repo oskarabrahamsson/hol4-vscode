@@ -1,8 +1,8 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { log, error } from './common';
-import { HolTerminal } from './hol_terminal';
-import { HOLIDE, entryToCompletionItem, entryToSymbol, isAccessibleEntry } from './hol_ide';
+import { log, error, EXTENSION_ID, KERNEL_ID } from './common';
+import { HolNotebook } from './notebook';
+import { HOLIDE, entryToCompletionItem, entryToSymbol, isAccessibleEntry } from './holIDE';
 
 /**
  * Generate a HOL lexer location pragma from a vscode Position value.
@@ -77,12 +77,11 @@ function getSelection(editor: vscode.TextEditor): string {
 function addLocationPragma(text: string, position: vscode.Position) {
     const locPragma = positionToLocationPragma(position);
     const trace = '"show_typecheck_errors"';
-    const data = [
-        'let val old = Feedback.current_trace ', trace,
-        '    val _ = Feedback.set_trace ', trace, ' 0 in (',
-        locPragma, ') before Feedback.set_trace ', trace, ' old end;',
-        `${text};`
-    ].join('');
+    const data =
+        `let val old = Feedback.current_trace ${trace}\n` +
+        `    val _ = Feedback.set_trace ${trace} 0\n` +
+        `in (${locPragma}) before Feedback.set_trace ${trace} old end;\n` +
+        text;
     return data;
 }
 
@@ -207,13 +206,13 @@ function selectBetween(editor: vscode.TextEditor, init: RegExp, stop: RegExp): v
  *
  * @note this function embeds a location pragma in the string it returns.
  */
-function extractGoal(editor: vscode.TextEditor): string | undefined {
+function extractGoal(editor: vscode.TextEditor): [string, string] | undefined {
     const selection = editor.selection;
     const document = editor.document;
 
     if (!selection.isEmpty) {
         const locPragma = positionToLocationPragma(selection.anchor);
-        return [locPragma, document.getText(selection)].join('');
+        return [locPragma, document.getText(selection)];
     }
 
     const spanBegin = /^(Theorem|Triviality)\s+[^\[\:]+(\[[^\]]*\])?\s*\:/;
@@ -226,7 +225,7 @@ function extractGoal(editor: vscode.TextEditor): string | undefined {
         (sel = selectBetween(editor, /``/, /``/)) ||
         (sel = selectBetween(editor, /`/, /`/))) {
         const locPragma = positionToLocationPragma(sel.anchor);
-        return [locPragma, document.getText(sel)].join('');
+        return [locPragma, document.getText(sel)];
     }
 
     return;
@@ -236,91 +235,120 @@ function extractGoal(editor: vscode.TextEditor): string | undefined {
  * Identical to {@link extractGoal} but only accepts term quotations.
  * @todo Merge with extractGoal.
  */
-function extractSubgoal(editor: vscode.TextEditor): string | undefined {
+function extractSubgoal(editor: vscode.TextEditor): [string, string] | undefined {
     const selection = editor.selection;
     const document = editor.document;
 
     if (!selection.isEmpty) {
         const locPragma = positionToLocationPragma(selection.anchor);
-        return [locPragma, document.getText(selection)].join('');
+        return [locPragma, document.getText(selection)];
     }
 
     let sel;
     if ((sel = selectBetween(editor, /‘/, /’/)) ||
         (sel = selectBetween(editor, /`/, /`/))) {
         const locPragma = positionToLocationPragma(sel.anchor);
-        return [locPragma, document.getText(sel)].join('');
+        return [locPragma, document.getText(sel)];
     }
 
     return;
 }
 
-export class HOLExtensionContext {
+export class HOLExtensionContext implements vscode.CompletionItemProvider {
+    /** Currently active notebook editor (if any). */
+    public notebook?: HolNotebook;
 
-    /**
-     * Path to the HOL installation to use.
-     */
-    public holPath: string;
+    constructor(
+        /** Path to the HOL installation to use. */
+        public holPath: string,
 
-    /**
-     * Currently active pseudoterminal (if any).
-     */
-    public holTerminal?: HolTerminal;
-
-    /**
-     * Current IDE class instance.
-     */
-    public holIDE?: HOLIDE;
-
-    /**
-     * Currently active terminal (if any).
-     */
-    public terminal?: vscode.Terminal;
-
-    constructor(holPath: string, holIDE?: HOLIDE) {
-        this.holPath = holPath;
-        this.holIDE = holIDE;
-    }
+        /** Current IDE class instance. */
+        public holIDE?: HOLIDE
+    ) { }
 
     /** Returns whether the current session is active. If it is not active, then
      * an error message is printed.
      */
     isActive(): boolean {
-        if (!this.holTerminal) {
+        this.sync();
+        if (!this.notebook?.kernel.running) {
             vscode.window.showErrorMessage('No active HOL session; doing nothing.');
             error('No active session; doing nothing');
         }
 
-        return this.holTerminal !== undefined;
+        return !!this.notebook?.kernel.running;
+    }
+
+    sync() {
+        if (this.notebook && !this.notebook.sync()) {
+            this.notebook = undefined;
+        }
     }
 
     /**
      * Start HOL terminal session.
      */
     async startSession(editor: vscode.TextEditor) {
-        if (this.holTerminal !== undefined) {
+        this.sync();
+        if (this.notebook?.kernel.running) {
             vscode.window.showErrorMessage('HOL session already active; doing nothing.');
             error('Session already active; doing nothing');
             return;
         }
 
-        let docPath = path.dirname(editor.document.uri.fsPath);
-        this.holTerminal = new HolTerminal(docPath, this.holPath);
-        this.terminal = vscode.window.createTerminal({
-            name: 'HOL4',
-            pty: this.holTerminal
-        });
-
-        vscode.window.onDidCloseTerminal((e: vscode.Terminal) => {
-            if (e === this.terminal) {
-                this.terminal = undefined;
-                this.holTerminal = undefined;
-                log('Closed terminal; deactivating');
+        if (this.notebook) {
+            this.notebook.stop();
+        } else {
+            let docPath = path.dirname(editor.document.uri.fsPath);
+            let notebookEditor = vscode.window.visibleNotebookEditors.find(e => {
+                return e.notebook.metadata.hol || (
+                    // Heuristic identification of orphaned HOL windows
+                    e.notebook.isUntitled &&
+                    e.notebook.cellCount == 0 &&
+                    e.notebook.notebookType == 'interactive'
+                )
+            });
+            if (!notebookEditor) {
+                const result = await vscode.commands.executeCommand<{ notebookEditor?: vscode.NotebookEditor }>(
+                    'interactive.open',
+                    { viewColumn: vscode.ViewColumn.Beside, preserveFocus: false },
+                    undefined,
+                    KERNEL_ID,
+                    'HOL4 Session'
+                );
+                if (!result.notebookEditor) {
+                    error('vscode notebook failed to start');
+                    return;
+                }
+                notebookEditor = result.notebookEditor;
+                const edit = new vscode.WorkspaceEdit();
+                edit.set(notebookEditor.notebook.uri, [
+                    vscode.NotebookEdit.updateNotebookMetadata({ hol: true })
+                ]);
+                vscode.workspace.applyEdit(edit);
             }
-        });
+            vscode.commands.executeCommand('notebook.selectKernel',
+                { notebookEditor, id: KERNEL_ID, extension: EXTENSION_ID }
+            );
+            this.notebook = new HolNotebook(docPath, this.holPath, notebookEditor);
 
+            vscode.window.tabGroups.onDidChangeTabGroups((e) => {
+                if (e.closed && notebookEditor.notebook.isClosed) {
+                    this.notebook?.dispose();
+                    this.notebook = undefined;
+                }
+            });
+            vscode.window.tabGroups.onDidChangeTabs((e) => {
+                if (e.closed && notebookEditor.notebook.isClosed) {
+                    this.notebook?.dispose();
+                    this.notebook = undefined;
+                }
+            });
+        }
+
+        this.notebook.show();
+        await this.notebook.start();
         log('Started session');
-        this.terminal.show(true);
     }
 
     /**
@@ -332,8 +360,16 @@ export class HOLExtensionContext {
         }
 
         log('Stopped session');
-        this.terminal?.dispose();
-        this.holTerminal = undefined;
+        this.notebook!.close();
+    }
+
+    /**
+     * Stop the HOL terminal session.
+     */
+    restartSession(editor: vscode.TextEditor) {
+        log('Restarted session');
+        this.notebook?.stop();
+        this.startSession(editor);
     }
 
     /**
@@ -345,23 +381,24 @@ export class HOLExtensionContext {
         }
 
         log('Interrupted session');
-        this.holTerminal?.interrupt();
+        this.notebook!.kernel.interrupt();
     }
 
     /**
      * Send selection to the terminal; preprocess to find `open` and `load`
      * calls.
      */
-    sendSelection(editor: vscode.TextEditor) {
-        if (!this.isActive()) {
-            return;
+    async sendSelection(editor: vscode.TextEditor) {
+        this.sync();
+        if (!this.notebook?.kernel.running) {
+            await this.startSession(editor);
         }
 
-        let text = getSelection(editor);
-        text = processOpens(text);
-        text = addLocationPragma(text, editor.selection.start);
+        const text = getSelection(editor);
+        let full = processOpens(text);
+        full = addLocationPragma(full, editor.selection.start);
 
-        this.holTerminal!.sendRaw(`${text};\n`);
+        await this.notebook!.send(text, true, full);
     }
 
 
@@ -369,170 +406,178 @@ export class HOLExtensionContext {
      * Send all text up to and including the current line in the current editor to
      * the terminal.
      */
-    sendUntilCursor(editor: vscode.TextEditor) {
-        if (!this.isActive()) {
-            return;
+    async sendUntilCursor(editor: vscode.TextEditor) {
+        this.sync();
+        if (!this.notebook?.kernel.running) {
+            await this.startSession(editor);
         }
 
         const currentLine = editor.selection.active.line;
 
         const selection = new vscode.Selection(0, 0, currentLine, 0);
-        let text = editor.document.getText(selection);
-        text = processOpens(text);
-        text = addLocationPragma(text, selection.start);
+        const text = editor.document.getText(selection);
+        let full = processOpens(text);
+        full = addLocationPragma(full, selection.start);
 
-        this.holTerminal!.sendRaw(`${text};\n`);
+        await this.notebook!.send(text, true, full);
     }
 
     /**
      * Send a goal selection to the terminal.
      */
-    sendGoal(editor: vscode.TextEditor) {
-        if (!this.isActive()) {
-            return;
+    async sendGoal(editor: vscode.TextEditor) {
+        this.sync();
+        if (!this.notebook?.kernel.running) {
+            await this.startSession(editor);
         }
 
-        let text = extractGoal(editor);
-        if (!text) {
+        let goal = extractGoal(editor);
+        if (!goal) {
             vscode.window.showErrorMessage('Unable to select a goal term');
             error('Unable to select goal term');
             return;
         }
-
-        this.holTerminal!.sendRaw(`proofManagerLib.g(\`${text}\`);\n`);
-        this.holTerminal!.sendRaw('proofManagerLib.set_backup 100;\n');
+        let [locPragma, text] = goal;
+        const faketext = `proofManagerLib.g(\`${text}\`)`;
+        const realtext = `proofManagerLib.g(\`${locPragma}${text}\`)`;
+        const full = `let val x = ${realtext}; val _ = proofManagerLib.set_backup 100 in x end`
+        await this.notebook!.send(faketext, true, full);
     }
 
     /**
      * Select a term quotation and set it up as a subgoal.
      */
-    sendSubgoal(editor: vscode.TextEditor) {
+    async sendSubgoal(editor: vscode.TextEditor) {
         if (!this.isActive()) {
             return;
         }
 
-        let text = extractSubgoal(editor);
-        if (!text) {
+        let sg = extractSubgoal(editor);
+        if (!sg) {
             vscode.window.showErrorMessage('Unable to select a subgoal term');
             error('Unable to select subgoal term');
             return;
         }
-
-        this.holTerminal!.sendRaw(`proofManagerLib.e(sg\`${text}\`);\n`);
+        let [locPragma, text] = sg;
+        const faketext = `proofManagerLib.e(sg\`${text}\`)`;
+        const realtext = `proofManagerLib.e(sg\`${locPragma}${text}\`)`;
+        await this.notebook!.send(faketext, true, realtext);
     }
 
     /**
      * Send a tactic to the terminal.
      */
-    sendTactic(editor: vscode.TextEditor) {
+    async sendTactic(editor: vscode.TextEditor) {
         if (!this.isActive()) {
             return;
         }
 
         let tacticText = getSelection(editor);
         tacticText = processTactics(tacticText);
-        const text = addLocationPragma(`proofManagerLib.e(${tacticText})`, editor.selection.start);
+        const text = `proofManagerLib.e(${tacticText})`;
+        const full = addLocationPragma(text, editor.selection.start);
 
-        this.holTerminal!.sendRaw(`${text};\n`);
+        await this.notebook!.send(text, true, full);
     }
 
 
     /**
      * Send a tactic line to the terminal.
      */
-    sendTacticLine(editor: vscode.TextEditor) {
+    async sendTacticLine(editor: vscode.TextEditor) {
         if (!this.isActive()) {
             return;
         }
 
         let tacticText = editor.document.lineAt(editor.selection.active.line).text;
         tacticText = processTactics(tacticText);
-        const text = addLocationPragma(`proofManagerLib.e(${tacticText})`, editor.selection.start);
+        const text = `proofManagerLib.e(${tacticText})`;
+        const full = addLocationPragma(text, editor.selection.start);
 
-        this.holTerminal!.sendRaw(`${text};\n`);
+        await this.notebook!.send(text, true, full);
     }
 
     /**
      * Show current goal.
      */
-    showCurrentGoal() {
+    async showCurrentGoal() {
         if (!this.isActive()) {
             return;
         }
 
-        this.holTerminal!.sendRaw('proofManagerLib.p ();\n');
+        await this.notebook!.send('proofManagerLib.p ()', true);
     }
 
 
     /**
      * Rotate goal.
      */
-    rotateGoal() {
+    async rotateGoal() {
         if (!this.isActive()) {
             return;
         }
 
-        this.holTerminal!.sendRaw('proofManagerLib.rotate 1;\n');
+        await this.notebook!.send('proofManagerLib.rotate 1', true);
     }
 
     /**
      * Step backwards goal.
      */
-    stepbackGoal() {
+    async stepbackGoal() {
         if (!this.isActive()) {
             return;
         }
 
-        this.holTerminal!.sendRaw('proofManagerLib.backup ();\n');
+        await this.notebook!.send('proofManagerLib.backup ()', true);
     }
 
     /**
      * Restart goal.
      */
-    restartGoal() {
+    async restartGoal() {
         if (!this.isActive()) {
             return;
         }
 
-        this.holTerminal!.sendRaw('proofManagerLib.restart ();\n');
+        await this.notebook!.send('proofManagerLib.restart ()', true);
     }
 
     /**
      * Drop goal.
      */
-    dropGoal() {
+    async dropGoal() {
         if (!this.isActive()) {
             return;
         }
 
-        this.holTerminal!.sendRaw('proofManagerLib.drop();\n');
+        await this.notebook!.send('proofManagerLib.drop ()', true);
     }
 
     /**
      * Toggle printing of terms with or without types.
      */
-    toggleShowTypes() {
+    async toggleShowTypes() {
         if (!this.isActive()) {
             return;
         }
 
-        this.holTerminal!.sendRaw('Globals.show_types:=not(!Globals.show_types);\n');
+        await this.notebook!.send('Globals.show_types := not (!Globals.show_types)', true);
     }
 
     /**
      * Toggle printing of theorem hypotheses.
      */
-    toggleShowAssums() {
+    async toggleShowAssums() {
         if (!this.isActive()) {
             return;
         }
-        this.holTerminal!.sendRaw('Globals.show_assums:=not(!Globals.show_assums);\n');
+        await this.notebook!.send('Globals.show_assums := not (!Globals.show_assums)', true);
     }
 
     /**
      * See {@link vscode.HoverProvider}.
      */
-    provideHover(document: vscode.TextDocument, position: vscode.Position, token: vscode.CancellationToken) {
+    provideHover(document: vscode.TextDocument, position: vscode.Position, _token: vscode.CancellationToken) {
         const wordRange = document.getWordRangeAtPosition(position);
         const word = document.getText(wordRange);
         const entry = this.holIDE?.allEntries().find((entry) =>

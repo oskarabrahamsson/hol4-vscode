@@ -396,7 +396,6 @@ function getImports(document: vscode.TextDocument): string[] {
     const imports: string[] = [];
     const text = document.getText();
     const contents = removeComments(text);
-    console.log(contents);
     let match: RegExpExecArray | null;
     while (importRegex.exec(contents)) {
         let lastIndex = identRegex.lastIndex = importRegex.lastIndex;
@@ -417,7 +416,6 @@ function getImports(document: vscode.TextDocument): string[] {
         }
         importRegex.lastIndex = identRegex.lastIndex;
     }
-    console.log(imports);
     return imports;
 }
 
