@@ -57,7 +57,15 @@ function initialize(): HOLExtensionContext | undefined {
             error('workspace has too many roots');
         }
     }
-
+    // Cleanup orphaned tabs from previous session
+    for (const group of vscode.window.tabGroups.all) {
+        for (const tab of group.tabs) {
+            if (tab.label == 'HOL4 Session' &&
+                !vscode.workspace.notebookDocuments.some(doc => doc.uri == (tab.input as { uri?: vscode.Uri }).uri)) {
+                vscode.window.tabGroups.close(tab);
+            }
+        }
+    }
     return new HOLExtensionContext(holPath, holIDE);
 }
 

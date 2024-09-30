@@ -270,19 +270,27 @@ export class HOLExtensionContext implements vscode.CompletionItemProvider {
      * an error message is printed.
      */
     isActive(): boolean {
-        if (!this.notebook?.kernel) {
+        this.sync();
+        if (!this.notebook?.kernel.running) {
             vscode.window.showErrorMessage('No active HOL session; doing nothing.');
             error('No active session; doing nothing');
         }
 
-        return !!this.notebook?.kernel;
+        return !!this.notebook?.kernel.running;
+    }
+
+    sync() {
+        if (this.notebook && !this.notebook.sync()) {
+            this.notebook = undefined;
+        }
     }
 
     /**
      * Start HOL terminal session.
      */
     async startSession(editor: vscode.TextEditor) {
-        if (this.notebook?.kernel) {
+        this.sync();
+        if (this.notebook?.kernel.running) {
             vscode.window.showErrorMessage('HOL session already active; doing nothing.');
             error('Session already active; doing nothing');
             return;
@@ -292,13 +300,33 @@ export class HOLExtensionContext implements vscode.CompletionItemProvider {
             this.notebook.close();
         }
         let docPath = path.dirname(editor.document.uri.fsPath);
-        const { notebookEditor } = (await vscode.commands.executeCommand(
-            'interactive.open',
-            { viewColumn: vscode.ViewColumn.Beside, preserveFocus: false },
-            undefined,
-            KERNEL_ID,
-            'HOL4 Session'
-        )) as { notebookEditor: vscode.NotebookEditor };
+        let notebookEditor = vscode.window.visibleNotebookEditors.find(e => {
+            return e.notebook.metadata.hol || (
+                // Heuristic identification of orphaned HOL windows
+                e.notebook.isUntitled &&
+                e.notebook.cellCount == 0 &&
+                e.notebook.notebookType == 'interactive'
+            )
+        });
+        if (!notebookEditor) {
+            const result = await vscode.commands.executeCommand<{ notebookEditor?: vscode.NotebookEditor }>(
+                'interactive.open',
+                { viewColumn: vscode.ViewColumn.Beside, preserveFocus: false },
+                undefined,
+                KERNEL_ID,
+                'HOL4 Session'
+            );
+            if (!result.notebookEditor) {
+                error('vscode notebook failed to start');
+                return;
+            }
+            notebookEditor = result.notebookEditor;
+            const edit = new vscode.WorkspaceEdit();
+            edit.set(notebookEditor.notebook.uri, [
+                vscode.NotebookEdit.updateNotebookMetadata({ hol: true })
+            ]);
+            await vscode.workspace.applyEdit(edit);
+        }
         await vscode.commands.executeCommand('notebook.selectKernel',
             { notebookEditor, id: KERNEL_ID, extension: EXTENSION_ID }
         );
@@ -352,7 +380,7 @@ export class HOLExtensionContext implements vscode.CompletionItemProvider {
         }
 
         log('Interrupted session');
-        this.notebook!.kernel!.interrupt();
+        this.notebook!.kernel.interrupt();
     }
 
     /**
@@ -377,7 +405,8 @@ export class HOLExtensionContext implements vscode.CompletionItemProvider {
      * the terminal.
      */
     async sendUntilCursor(editor: vscode.TextEditor) {
-        if (!this.notebook?.kernel) {
+        this.sync();
+        if (!this.notebook?.kernel.running) {
             await this.startSession(editor);
         }
 
@@ -545,7 +574,7 @@ export class HOLExtensionContext implements vscode.CompletionItemProvider {
     /**
      * See {@link vscode.HoverProvider}.
      */
-    provideHover(document: vscode.TextDocument, position: vscode.Position, token: vscode.CancellationToken) {
+    provideHover(document: vscode.TextDocument, position: vscode.Position, _token: vscode.CancellationToken) {
         const wordRange = document.getWordRangeAtPosition(position);
         const word = document.getText(wordRange);
         const entry = this.holIDE?.allEntries().find((entry) =>

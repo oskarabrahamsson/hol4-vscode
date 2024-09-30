@@ -2,22 +2,63 @@ import * as vscode from 'vscode';
 import * as child_process from 'child_process';
 import * as path from 'path';
 import { error, KERNEL_ID, log } from './common';
+import { Readable } from 'stream';
 
 class Execution {
+    private buffer: string = '';
     private success: boolean = true;
-    constructor(public exec?: vscode.NotebookCellExecution) { }
+    private writeAnyway: NodeJS.Timeout | undefined;
+    constructor(public exec: vscode.NotebookCellExecution) { }
+    appendOutput(str: string, err?: boolean) {
+        const pos = str.lastIndexOf('\n');
+        if (pos >= 0) {
+            this.buffer += str.substring(0, pos);
+            this.output(err);
+            this.buffer = str.substring(pos + 1);
+            if (this.buffer) {
+                // Avoid sitting on buffered output for too long
+                if (this.writeAnyway) {
+                    this.writeAnyway.refresh();
+                } else {
+                    this.writeAnyway = setTimeout(() => {
+                        this.output(err);
+                        this.buffer = '';
+                    }, 300);
+                }
+            }
+        } else {
+            if (err) this.markFail();
+            this.buffer += str;
+        }
+    }
+    private output(err?: boolean) {
+        if (err || this.buffer.includes('error:')) {
+            this.markFail();
+            this.exec.appendOutput(new vscode.NotebookCellOutput([
+                vscode.NotebookCellOutputItem.stderr(this.buffer)
+            ]));
+        } else {
+            this.exec.appendOutput(new vscode.NotebookCellOutput([
+                vscode.NotebookCellOutputItem.stdout(this.buffer)
+            ]));
+        }
+    }
+
     markFail() {
         this.success = false;
     }
-    end(date: number, success?: boolean) { this.exec?.end(success ?? this.success, date) }
+    end(success?: boolean) {
+        if (this.buffer) this.output();
+        clearTimeout(this.writeAnyway);
+        this.exec.end(success ?? this.success, Date.now())
+    }
 }
 
-export type OverflowEvent = { s: string, err: boolean, date: number }
+export type OverflowEvent = { s: string, err: boolean }
 export class HolKernel {
     /**
      * The connection to the HOL process itself. May be undefined if the process has not started yet
-     * or if it was aborted etc., although the lifecycle of the {@link HolKernel} itself is intended
-     * to track the child process. A {@link HolKernel} should not be used for two executions of HOL.
+     * or if it was aborted etc.
      */
     private child?: child_process.ChildProcess;
 
@@ -40,23 +81,16 @@ export class HolKernel {
     /** Fires when HOL says something outside the expected request/response flow. */
     private overflowListener = new vscode.EventEmitter<OverflowEvent>();
 
-    /** True if we haven't seen any nontrivial prints, for removing a prefix of prompts. */
-    private outputStart = false;
-
     /** The list of cells that are waiting for a previous execution to complete. */
     private executionQueue: vscode.NotebookCell[] = [];
-
-    /**
-     * After a cell outputs something that looks like a prompt, we wait a bit in case HOL has more
-     * to say. This is defined when we have seen a prompt recently.
-     */
-    private looksLikeTheEnd?: NodeJS.Timer;
 
     /**
      * The execution order of the cells, used by vscode to show indicators on the cells (although
      * we don't currently support running cells out of order).
      */
     private executionOrder = 0;
+
+    get running(): boolean { return !!this.child; }
 
     sendRaw(text: string) {
         if (this.child) {
@@ -85,117 +119,109 @@ export class HolKernel {
         this.execListener.fire(cell);
 
         if (this.child) {
-            this.currentExecution.exec!.token.onCancellationRequested(this.interrupt.bind(this));
-            this.currentExecution.exec!.executionOrder = this.executionOrder++;
-            this.currentExecution.exec!.start(Date.now());
+            this.currentExecution.exec.token.onCancellationRequested(this.interrupt.bind(this));
+            this.currentExecution.exec.executionOrder = this.executionOrder++;
+            this.currentExecution.exec.start(Date.now());
 
-            this.sendRaw((cell.metadata.fullContent ?? cell.document.getText()) + ';;\n');
-            this.outputStart = true;
+            this.sendRaw((cell.metadata.fullContent ?? cell.document.getText()) + '\0');
         } else {
-            const now = Date.now();
-            this.currentExecution.exec!.start(now);
-            this.currentExecution.exec!.appendOutput(new vscode.NotebookCellOutput([
+            this.currentExecution.exec.start(Date.now());
+            this.currentExecution.exec.appendOutput(new vscode.NotebookCellOutput([
                 vscode.NotebookCellOutputItem.stderr('HOL process is not started')
             ]));
             this.currentExecution.markFail();
-            this.finish(now);
+            this.finish();
         }
     }
 
-    finish(date: number) {
+    finish() {
         if (this.currentExecution) {
-            this.currentExecution?.end(date);
+            this.currentExecution.end();
             this.currentExecution = undefined;
-        } else {
-            this.overflowListener.fire({ s: "", err: false, date });
+            const cell = this.executionQueue.shift();
+            if (cell) this.runCell(cell);
         }
-        const cell = this.executionQueue.shift();
-        if (cell) this.runCell(cell);
-    }
-
-    private finishOutput(date: number) {
-        // if (this.initializing) {
-        //     this.initializing.dispose();
-        //     this.initializing = undefined;
-        // }
-        this.finish(date);
     }
 
     onOverflow = this.overflowListener.event;
     onWillExec = this.execListener.event;
 
-    open() {
-        this.child = child_process.spawn(path.join(this.holPath!, 'bin', 'hol'), {
+    start() {
+        this.child = child_process.spawn(path.join(this.holPath!, 'bin', 'hol'), ['--zero'], {
             // eslint-disable-next-line @typescript-eslint/naming-convention
             env: { ...process.env, ...{ 'TERM': 'xterm' } },
             cwd: this.cwd,
             detached: true,
         });
         this.executionOrder = 0;
-        this.currentExecution = new Execution;
-        this.child.stdout?.on('data', (data: Buffer) => {
-            let date = Date.now();
-            if (this.looksLikeTheEnd) {
-                clearTimeout(this.looksLikeTheEnd);
-                this.looksLikeTheEnd = undefined;
+        const buffer: string[] = [];
+        const listenerStderr = (data: Buffer) => {
+            if (data.length) {
+                buffer.push(data.toString());
+                this.overflowListener.fire({ s: buffer.join(''), err: true });
+                buffer.length = 0;
             }
-            let str = data.toString();
-            const maybeDone = str.endsWith('> ');
-            if (maybeDone) {
-                str = str.substring(0, str.length - 2);
-                this.looksLikeTheEnd = setTimeout(() => this.finishOutput(date), 100);
+        };
+        const listenerStdout = (data: Buffer) => {
+            if (!data.length) return;
+            if (data.readUint8(data.length - 1) === 0) {
+                buffer.push(data.toString(undefined, undefined, data.length - 1));
+                this.child?.stdout?.off('data', listenerStdout);
+                this.child?.stderr?.off('data', listenerStderr);
+                this.finishOpen(buffer.join(''));
+            } else {
+                buffer.push(data.toString());
             }
-            if (this.outputStart) {
-                let i = 0;
-                while (str.startsWith('> ', i) || str.startsWith('# ', i)) i += 2;
-                str = str.substring(i);
-                if (str) this.outputStart = false;
-            }
-            if (str) {
-                if (this.currentExecution?.exec) {
-                    if (str.includes('error:')) this.currentExecution.markFail();
-                    this.currentExecution.exec.appendOutput(new vscode.NotebookCellOutput([
-                        vscode.NotebookCellOutputItem.stdout(str)
-                    ]));
-                } else {
-                    this.overflowListener?.fire({ s: str, err: false, date });
-                }
-            }
-        });
-        this.child.stderr?.on('data', (data: Buffer) => {
-            let date = Date.now();
-            const str = data.toString();
-            if (str) {
-                if (this.currentExecution?.exec) {
-                    this.currentExecution.exec.appendOutput(new vscode.NotebookCellOutput([
-                        vscode.NotebookCellOutputItem.stderr(str)
-                    ]));
-                    this.currentExecution.markFail()
-                } else {
-                    this.overflowListener?.fire({ s: str, err: true, date })
-                }
-            }
-        });
+        }
+        this.child.stdout?.on('data', listenerStdout);
+        this.child.stderr?.on('data', listenerStderr);
         this.child.addListener('disconnect', this.cancelAll.bind(this));
         this.child.addListener('close', this.cancelAll.bind(this));
         this.child.addListener('exit', this.cancelAll.bind(this));
     }
 
-    close() {
-        if (this.child?.pid) {
-            process.kill(-this.child.pid, 'SIGTERM');
+    private appendOutput(str: string, err?: boolean) {
+        if (this.currentExecution) {
+            this.currentExecution.appendOutput(str);
+        } else {
+            this.overflowListener.fire({ s: str, err: err ?? false });
         }
     }
 
+    private finishOpen(result: string) {
+        if (result) this.overflowListener.fire({ s: result, err: result.includes('error:') });
+        this.child?.stdout?.on('data', (data: Buffer) => {
+            if (!data.length) return;
+            if (data.readUint8(data.length - 1) === 0) {
+                this.appendOutput(data.toString(undefined, undefined, data.length - 1));
+                this.finish();
+            } else {
+                this.appendOutput(data.toString());
+            }
+        });
+        this.child?.stderr?.on('data', (data: Buffer) => {
+            if (!data.length) return;
+            this.appendOutput(data.toString(), true);
+        });
+    }
+
+    stop() {
+        if (this.child?.pid) {
+            process.kill(-this.child.pid, 'SIGTERM');
+        }
+        this.cancelAll();
+        this.child = undefined;
+    }
+
     dispose() {
-        this.close();
+        this.stop();
         this.controller.dispose();
     }
 
     cancelAll() {
         if (this.currentExecution) {
-            this.currentExecution.markFail()
-            this.currentExecution.end(Date.now());
+            this.currentExecution.markFail();
+            this.currentExecution.end();
             this.currentExecution = undefined;
         }
         this.executionQueue = [];
@@ -206,5 +232,12 @@ export class HolKernel {
             process.kill(-this.child.pid, 'SIGINT');
         }
         this.cancelAll();
+    }
+
+    sync() {
+        if (this.child && (this.child.killed || !this.child.connected)) {
+            this.cancelAll();
+            this.child = undefined;
+        }
     }
 }

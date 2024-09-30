@@ -30,21 +30,19 @@ export class HolNotebook {
     /** The insertion point for overflow events, generally just after the last executing cell. */
     public outputCell: number = 0;
 
-    /** The kernel connection, if a HOL kernel is currently running. */
-    public kernel?: HolKernel;
+    /** The kernel connection. */
+    public kernel: HolKernel;
 
     constructor(
         private readonly cwd: string,
         private readonly holPath: string,
         private readonly editor: vscode.NotebookEditor,
-    ) { }
-
-    async start() {
+    ) {
         this.kernel = new HolKernel(this.cwd, this.holPath);
         this.kernel.controller.updateNotebookAffinity(
             this.editor.notebook, vscode.NotebookControllerAffinity.Preferred);
         this.kernel.onWillExec(cell => this.outputCell = cell.index + 1);
-        this.kernel.onOverflow(disallowConcurrency(async ({ s, err, date }) => {
+        this.kernel.onOverflow(disallowConcurrency(async ({ s, err }) => {
             if (!s) return;
             const edit = new vscode.WorkspaceEdit();
             // Creating a new cell is so ugly, but the below code does not really work :(
@@ -102,12 +100,14 @@ export class HolNotebook {
             this.outputCell++;
             await vscode.workspace.applyEdit(edit);
         }));
-        this.kernel.open();
+    }
+
+    start() {
+        this.kernel.start();
     }
 
     async stop() {
-        this.kernel?.dispose();
-        this.kernel = undefined;
+        this.kernel.stop();
     }
 
     async send(s: string, collapsed?: boolean, fullContent?: string) {
@@ -135,16 +135,25 @@ export class HolNotebook {
     }
 
     dispose() {
-        this.kernel?.dispose();
+        this.kernel.dispose();
     }
 
     close() {
-        this.dispose();
+        this.kernel.stop();
         // FIXME: close the tab
     }
 
     show() {
         // FIXME: focus the tab
+    }
+
+    sync(): boolean {
+        this.kernel.sync();
+        if (this.editor.notebook.isClosed) {
+            this.dispose();
+            return false;
+        }
+        return true;
     }
 
     async clearAll() {
