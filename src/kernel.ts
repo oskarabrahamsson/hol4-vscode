@@ -93,6 +93,7 @@ export class HolKernel {
 
     sendRaw(text: string) {
         if (this.child) {
+            // console.log(`send ${JSON.stringify(text)}\n${text}`);
             this.child?.stdin?.write(text);
         } else {
             error(`HOL session is not started`);
@@ -155,19 +156,18 @@ export class HolKernel {
             detached: true,
         });
         this.executionOrder = 0;
-        this.child.addListener('disconnect', this.cancelAll.bind(this));
-        this.child.addListener('close', this.cancelAll.bind(this));
-        this.child.addListener('exit', this.cancelAll.bind(this));
+        this.child.addListener('disconnect', this.onKilled.bind(this));
+        this.child.addListener('close', this.onKilled.bind(this));
+        this.child.addListener('exit', this.onKilled.bind(this));
         return new Promise((resolve, reject) => {
             const buffer: string[] = [];
             const listenerStderr = (data: Buffer) => {
-                if (data.length) {
-                    buffer.push(data.toString());
-                    const s = buffer.join('');
-                    this.overflowListener.fire({ s, err: true });
-                    buffer.length = 0;
-                    reject(s)
-                }
+                if (!data.length) return;
+                buffer.push(data.toString());
+                const s = buffer.join('');
+                this.overflowListener.fire({ s, err: true });
+                buffer.length = 0;
+                reject(s)
             };
             const listenerStdout = (data: Buffer) => {
                 if (!data.length) return;
@@ -215,8 +215,7 @@ export class HolKernel {
         if (this.child?.pid) {
             process.kill(-this.child.pid, 'SIGTERM');
         }
-        this.cancelAll();
-        this.child = undefined;
+        this.onKilled();
     }
 
     dispose() {
@@ -233,6 +232,11 @@ export class HolKernel {
         this.executionQueue = [];
     }
 
+    private onKilled() {
+        this.cancelAll();
+        this.child = undefined;
+    }
+
     interrupt() {
         if (this.child?.pid) {
             process.kill(-this.child.pid, 'SIGINT');
@@ -242,8 +246,7 @@ export class HolKernel {
 
     sync() {
         if (this.child && (this.child.killed || !this.child.pid || this.child?.exitCode != null)) {
-            this.cancelAll();
-            this.child = undefined;
+            this.onKilled();
         }
     }
 }
