@@ -182,7 +182,64 @@ send([st('', 'proved', 40)]);
 check('an unnamed proof is not counted',
       /proofs 2\/4 \(1 to look at\)/.test(String(statusText)), statusText);
 
-console.log(failed === 0 ? '\nall checks passed'
-                         : `\n${failed} check(s) failed`);
-fs.rmSync(fakeHol, { recursive: true, force: true });
-process.exit(failed === 0 ? 0 : 1);
+// ---- theorem search ----------------------------------------------
+// The quick pick is what makes a search usable: it gets the hits as
+// items, and picking one opens where the theorem was proved.
+let quickPickItems = null;
+let opened = null;
+vscodeStub.window.showInputBox = async () => '"ASSOC" \'arithmetic\'';
+vscodeStub.window.showQuickPick = async (items) => {
+  quickPickItems = items;
+  return items[0];
+};
+vscodeStub.workspace.openTextDocument = async (u) => { opened = u; return {}; };
+vscodeStub.window.showTextDocument = async () => ({
+  selection: null, revealRange() {},
+});
+vscodeStub.Position = class {
+  constructor(l, c) { this.line = l; this.character = c; }
+};
+vscodeStub.Selection = class {};
+vscodeStub.Range = class {};
+vscodeStub.TextEditorRevealType = { InCenterIfOutsideViewport: 2 };
+vscodeStub.Uri.parse = (u) => ({ scheme: 'file', toString: () => u });
+
+const hits = [
+  { name: 'ADD_ASSOC', theory: 'arithmetic', class: 'Thm',
+    statement: '\u22a2 !m n p.\n  m + (n + p) = m + n + p',
+    uri: 'file:///tmp/arithmeticScript.sml', line: 312 },
+  { name: 'NOWHERE', theory: 'local', class: 'Def',
+    statement: '\u22a2 T', line: 0 },
+];
+let asked = null;
+clients.sendRequest = async (_doc, method, params) => {
+  asked = { method, params };
+  return hits;
+};
+
+(async () => {
+  await clients.searchTheorems();
+  check('search asks the server', asked && asked.method === '$/hol/search',
+        asked);
+  check('as one box, for the server to split',
+        asked && asked.params.query === '"ASSOC" \'arithmetic\'', asked);
+  check('every hit is offered',
+        quickPickItems && quickPickItems.length === hits.length,
+        quickPickItems);
+  check('labelled theory$name with its class',
+        quickPickItems &&
+        quickPickItems[0].label === 'arithmetic$ADD_ASSOC' &&
+        quickPickItems[0].description === 'Thm', quickPickItems);
+  check('and its statement flattened to one line',
+        quickPickItems &&
+        quickPickItems[0].detail === '\u22a2 !m n p. m + (n + p) = m + n + p',
+        quickPickItems && quickPickItems[0].detail);
+  check('picking one opens where it was proved',
+        opened && String(opened) === 'file:///tmp/arithmeticScript.sml',
+        opened);
+
+  console.log(failed === 0 ? '\nall checks passed'
+                           : `\n${failed} check(s) failed`);
+  fs.rmSync(fakeHol, { recursive: true, force: true });
+  process.exit(failed === 0 ? 0 : 1);
+})();

@@ -145,6 +145,18 @@ function disposeScriptClient(entry: ScriptClient): void {
  * See `tools-poly/lsp/README.md`, "One server per buffer", in the HOL
  * repo.
  */
+/** One theorem `$/hol/search` found: what it is called, what it says,
+ * and where it was proved.  `line` is 1-based, 0 when unrecorded, and
+ * `uri` is absent for the same reason. */
+interface SearchHit {
+    name: string;
+    theory: string;
+    class: string;
+    statement: string;
+    uri?: string;
+    line: number;
+}
+
 export class LspClients implements vscode.Disposable {
     private readonly clients = new Map<string, ScriptClient>();
     private readonly status: vscode.StatusBarItem;
@@ -286,6 +298,75 @@ export class LspClients implements vscode.Disposable {
         const entry = this.clients.get(doc.uri.toString());
         if (!entry || entry.client.state !== State.Running) return undefined;
         return entry.client.sendRequest<T>(method, params);
+    }
+
+    /** Ask the theorem database what matches, and offer the answers.
+     *
+     * The counterpart of emacs's `M-h M-m` and of `M-h M` before it: a
+     * selector is a theory in single quotes, a fragment of a theorem's
+     * name in double quotes, or a term pattern, and several of them
+     * narrow rather than widen.  One box rather than a prompt per
+     * selector, which the server splits -- a quoted run is one
+     * selector and everything left over is one pattern -- so that the
+     * same thing typed here and in emacs asks the same question.
+     *
+     * A quick pick rather than a panel: it filters as you type, which
+     * is what you want having asked for fifty theorems, and picking
+     * one goes to where it was proved.  A statement is shown as its
+     * detail, newlines flattened, the widget being one line per item. */
+    async searchTheorems(): Promise<void> {
+        const doc = vscode.window.activeTextEditor?.document;
+        if (!doc || !isHolScript(doc)) {
+            vscode.window.showInformationMessage(
+                'HOL: open a HOL script to search from.');
+            return;
+        }
+        const query = await vscode.window.showInputBox({
+            title: 'HOL: search for theorems',
+            prompt: "'theory'   \"name fragment\"   term pattern " +
+                    '\u2014 combine to narrow',
+            placeHolder: '"ASSOC" \'arithmetic\'',
+        });
+        if (!query) return;
+        let hits: SearchHit[] | undefined;
+        try {
+            hits = await this.sendRequest<SearchHit[]>(
+                doc, '$/hol/search', { query, limit: 200 });
+        } catch (err) {
+            vscode.window.showErrorMessage(`HOL: search failed: ${err}`);
+            return;
+        }
+        if (!hits || hits.length === 0) {
+            vscode.window.showInformationMessage(
+                `HOL: nothing matches ${query}`);
+            return;
+        }
+        const items = hits.map((h) => ({
+            label: `${h.theory}$${h.name}`,
+            description: h.class,
+            detail: (h.statement ?? '').replace(/\s+/g, ' ').trim(),
+            hit: h,
+        }));
+        const chosen = await vscode.window.showQuickPick(items, {
+            title: `${hits.length} theorem${hits.length === 1 ? '' : 's'}` +
+                   ` for ${query}`,
+            matchOnDetail: true,
+        });
+        if (!chosen) return;
+        const { uri, line } = chosen.hit;
+        if (!uri) {
+            vscode.window.showInformationMessage(
+                `HOL: no source location recorded for ${chosen.label}`);
+            return;
+        }
+        const target = await vscode.workspace.openTextDocument(
+            vscode.Uri.parse(uri));
+        const editor = await vscode.window.showTextDocument(target);
+        // `line` is 1-based, and 0 when the location was not recorded.
+        const at = new vscode.Position(Math.max(0, (line ?? 1) - 1), 0);
+        editor.selection = new vscode.Selection(at, at);
+        editor.revealRange(new vscode.Range(at, at),
+                           vscode.TextEditorRevealType.InCenterIfOutsideViewport);
     }
 
     dispose(): void {

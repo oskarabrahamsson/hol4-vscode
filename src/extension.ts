@@ -201,6 +201,10 @@ export function activate(context: vscode.ExtensionContext) {
                 lspClients?.gotoOutstandingProof();
             }),
 
+        vscode.commands.registerCommand('hol4-mode.lsp.search', () => {
+            lspClients?.searchTheorems();
+        }),
+
         // No language providers are registered here.  Hover,
         // definition, documentSymbol, workspaceSymbol and completion
         // all come from the language server, which

@@ -182,6 +182,10 @@
                 "command": "hol4-mode.lsp.gotoOutstandingProof",
                 "title": "Go to the next unchecked proof",
                 "category": "HOL"
+            },
+            {
+                "command": "hol4-mode.lsp.search",
+                "title": "Search for theorems"
             }
         ],
         "keybindings": [
