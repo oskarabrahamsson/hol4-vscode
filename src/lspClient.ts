@@ -7,7 +7,7 @@ import {
     ServerOptions,
     State,
 } from 'vscode-languageclient/node';
-import { error } from './common';
+import { error, hitLocation } from './common';
 
 /** Position argument for the `$/hol/goalState` custom request. */
 export interface GoalStatePosition {
@@ -360,12 +360,18 @@ export class LspClients implements vscode.Disposable {
                 `HOL: nothing matches ${query}`);
             return;
         }
-        const items = hits.map((h) => ({
-            label: `${h.theory}$${h.name}`,
-            description: h.class,
-            detail: (h.statement ?? '').replace(/\s+/g, ' ').trim(),
-            hit: h,
-        }));
+        const items = hits.map((h) => {
+            // The location is shown, not merely used on selection:
+            // which script a theorem comes from is half of what the
+            // reader is deciding between.
+            const where = hitLocation(h.uri, h.line);
+            return {
+                label: `${h.theory}$${h.name}`,
+                description: where ? `${h.class}  ${where}` : h.class,
+                detail: (h.statement ?? '').replace(/\s+/g, ' ').trim(),
+                hit: h,
+            };
+        });
         const chosen = await vscode.window.showQuickPick(items, {
             title: `${hits.length} theorem${hits.length === 1 ? '' : 's'}` +
                    ` for ${query}`,

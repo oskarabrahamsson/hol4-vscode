@@ -33,7 +33,7 @@ Module._load = function (request, ...rest) {
   return origLoad.call(this, request, ...rest);
 };
 
-const { segmentTitle, segmentsToHtml } =
+const { segmentTitle, segmentsToHtml, hitLocation } =
   require(path.join(REPO, 'out', 'common.js'));
 
 let failed = 0;
@@ -94,6 +94,17 @@ check('segment text is html-escaped',
       nasty.includes('a &lt; b'), nasty);
 check('and so is the title',
       nasty.includes('&quot;') && !nasty.includes('title="x$"<"'), nasty);
+
+// --- search hits say where they were proved -------------------------
+check('a hit shows its script and line, not its path',
+      hitLocation('file:///hol/src/finite_map/finite_mapScript.sml', 1234)
+        === 'finite_mapScript.sml:1234',
+      hitLocation('file:///hol/src/finite_map/finite_mapScript.sml', 1234));
+check('a hit HOL records no location for shows nothing',
+      hitLocation(undefined, 12) === undefined, hitLocation(undefined, 12));
+check('and one with no line still names the script',
+      hitLocation('file:///a/bScript.sml') === 'bScript.sml',
+      hitLocation('file:///a/bScript.sml'));
 
 console.log(failed === 0 ? '\nall checks passed'
                          : `\n${failed} check(s) failed`);

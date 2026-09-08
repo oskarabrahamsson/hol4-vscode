@@ -226,10 +226,17 @@ clients.sendRequest = async (_doc, method, params) => {
   check('every hit is offered',
         quickPickItems && quickPickItems.length === hits.length,
         quickPickItems);
-  check('labelled theory$name with its class',
+  check('labelled theory$name, with its class and where it was proved',
         quickPickItems &&
         quickPickItems[0].label === 'arithmetic$ADD_ASSOC' &&
-        quickPickItems[0].description === 'Thm', quickPickItems);
+        quickPickItems[0].description === 'Thm  arithmeticScript.sml:312',
+        quickPickItems);
+  // The fixture's second hit has no location, which HOL does not
+  // always record; it must show the class alone rather than a stray
+  // separator.
+  check('a hit with no location shows just its class',
+        quickPickItems && quickPickItems[1].description === 'Def',
+        quickPickItems);
   check('and its statement flattened to one line',
         quickPickItems &&
         quickPickItems[0].detail === '\u22a2 !m n p. m + (n + p) = m + n + p',

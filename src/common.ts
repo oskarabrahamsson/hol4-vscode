@@ -138,3 +138,13 @@ export function segmentsToHtml(segs: GoalSegment[]): string {
     }
     return out;
 }
+
+/** Where a search hit was proved, as a reader wants it: the script's
+ * own name and the line, not the whole path.  One per result, the
+ * paths would crowd out the theorems -- and the path is what the
+ * *opening* needs, not the reading. */
+export function hitLocation(uri?: string, line?: number): string | undefined {
+    if (!uri) return undefined;
+    const name = uri.split('/').pop() ?? uri;
+    return line === undefined ? name : `${name}:${line}`;
+}
