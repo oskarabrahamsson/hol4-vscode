@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { escapeHtml } from './common';
+import { escapeHtml, segmentsToHtml } from './common';
 import {
     GoalStateParams,
     GoalStateResponse,
@@ -152,6 +152,14 @@ export class GoalsView implements vscode.Disposable {
             this.renderStatus(reply, `<div class="err">${escapeHtml(reply.error)}</div>`);
             return;
         }
+        if (reply.segments && reply.segments.length > 0) {
+            // Preferred over `pretty`: same text, but each symbol
+            // carries what it is, so the pane can answer the question
+            // hover cannot here -- the goal text is in no file.
+            this.renderStatus(reply,
+                `<pre class="pretty">${segmentsToHtml(reply.segments)}</pre>`);
+            return;
+        }
         if (reply.pretty && reply.pretty.length > 0) {
             this.renderStatus(reply,
                 `<pre class="pretty">${ansiToHtml(reply.pretty)}</pre>`);
@@ -263,6 +271,15 @@ function wrap(body: string): string {
   pre.pretty { margin: 0; white-space: pre-wrap;
                font-family: inherit; font-size: inherit; }
   .ansi-bold { font-weight: bold; }
+  /* What the ANSI colours were standing for, now said outright.
+     Kept to the same palette so the pane looks unchanged. */
+  .hol-const { color: var(--vscode-terminal-ansiBlue, #2472c8); }
+  .hol-fv    { color: var(--vscode-terminal-ansiGreen, #0dbc79); }
+  .hol-bv    { color: var(--vscode-terminal-ansiMagenta, #bc3fbc); }
+  .hol-tyvar,
+  .hol-tyop,
+  .hol-tysyn { color: var(--vscode-terminal-ansiCyan, #11a8cd); }
+  span[title] { cursor: help; }
   .ansi-fg-0  { color: #808080; }
   .ansi-fg-1  { color: var(--vscode-terminal-ansiRed, #cd3131); }
   .ansi-fg-2  { color: var(--vscode-terminal-ansiGreen, #0dbc79); }

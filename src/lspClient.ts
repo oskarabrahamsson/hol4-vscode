@@ -28,6 +28,21 @@ export interface Goal {
     goal: string;
 }
 
+/** One piece of the pretty-printed goal state.  The pieces'
+ * `text` concatenates to exactly what `pretty` shows once its colour
+ * escapes are removed, so a renderer can walk them instead and keep
+ * what the pretty-printer knew: `kind` says whether a symbol is a
+ * constant, a free or a bound variable, or a type operator; `name`
+ * gives a constant its theory-qualified identity ("listTheory$MAP");
+ * `ty` its type.  Absent on the runs of ordinary text, which is most
+ * of them. */
+export interface GoalSegment {
+    text: string;
+    kind?: 'const' | 'fv' | 'bv' | 'tyvar' | 'tyop' | 'tysyn';
+    name?: string;
+    ty?: string;
+}
+
 export interface GoalStateResponse {
     theorem?: string;
     step?: number;
@@ -36,6 +51,10 @@ export interface GoalStateResponse {
      * escapes.  Present since the goalState LSP extension shipped;
      * preferred over `goals` when non-empty. */
     pretty?: string;
+    /** `pretty` taken apart, so the pane can show what a symbol *is*.
+     * The goals pane is the one place hover cannot help: the text is
+     * in no file, so there is nothing to hover over. */
+    segments?: GoalSegment[];
     status?: string;
     opaque?: boolean;
     error?: string;

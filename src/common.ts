@@ -1,4 +1,5 @@
 import { DocumentSelector, OutputChannel, window, workspace } from 'vscode';
+import type { GoalSegment } from './lspClient';
 export const EXTENSION_ID = 'oskarabrahamsson.hol4-mode';
 export const KERNEL_ID = 'hol4';
 
@@ -106,3 +107,34 @@ export const escapeMLString = (() => {
 export const escapeHtml = (s: string): string =>
     s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
         .replace(/'/g, '&#39;').replace(/"/g, '&quot;');
+
+/** What to say about a segment on hover, or undefined if it says
+ * nothing.  A constant's theory-qualified name is the identity
+ * question worth answering; a variable's `ty` is already HOL's own
+ * `name :type`, so it needs no second copy of the name. */
+export function segmentTitle(seg: GoalSegment): string | undefined {
+    if (!seg.kind) return undefined;
+    if (seg.name && seg.ty) return `${seg.name} : ${seg.ty}`;
+    if (seg.name) return seg.name;
+    if (seg.ty) return seg.kind === 'bv' ? `bound ${seg.ty}` : seg.ty;
+    return undefined;
+}
+
+/** Render the segments as HTML, giving each annotated one a `title`
+ * so the browser shows it as a tooltip, and the same class
+ * `ansiToHtml` would have derived from the colour -- the kind is what
+ * the colour was standing for. */
+export function segmentsToHtml(segs: GoalSegment[]): string {
+    let out = '';
+    for (const seg of segs) {
+        const text = escapeHtml(seg.text ?? '');
+        const title = segmentTitle(seg);
+        if (title === undefined) {
+            out += text;
+        } else {
+            const cls = seg.kind ? ` class="hol-${seg.kind}"` : '';
+            out += `<span${cls} title="${escapeHtml(title)}">${text}</span>`;
+        }
+    }
+    return out;
+}
